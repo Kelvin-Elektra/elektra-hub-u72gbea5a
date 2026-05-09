@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Table,
@@ -12,34 +12,62 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Search, SlidersHorizontal, Eye } from 'lucide-react'
-import { mockCompanies } from '@/lib/data'
-import { cn } from '@/lib/utils'
+import { Search, Eye, Plus } from 'lucide-react'
+import { getCompanies, createCompany, type Company } from '@/services/api'
+import { useRealtime } from '@/hooks/use-realtime'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from 'sonner'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 export default function Companies() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [isOpen, setIsOpen] = useState(false)
+  const [formData, setFormData] = useState<Partial<Company>>({ status: 'active' })
 
-  const filteredCompanies = mockCompanies.filter(
+  const loadData = async () => {
+    try {
+      const data = await getCompanies()
+      setCompanies(data)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+  useRealtime('companies', loadData)
+
+  const filteredCompanies = companies.filter(
     (c) =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.plan.toLowerCase().includes(searchTerm.toLowerCase()),
+      (c.tax_id || '').toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      Ativo: 'bg-emerald-500/15 text-emerald-700 border-transparent',
-      Inadimplente: 'bg-amber-500/15 text-amber-700 border-transparent',
-      Cancelado: 'bg-red-500/15 text-red-700 border-transparent',
-      Bloqueado: 'bg-red-500/15 text-red-700 border-transparent',
+  const handleCreate = async () => {
+    try {
+      await createCompany(formData)
+      toast.success('Empresa criada com sucesso.')
+      setIsOpen(false)
+      loadData()
+    } catch (e) {
+      toast.error(getErrorMessage(e))
     }
-    return (
-      <Badge
-        className={cn(colors[status] || 'bg-muted', 'font-medium hover:bg-opacity-20')}
-        variant="outline"
-      >
-        {status}
-      </Badge>
-    )
   }
 
   return (
@@ -51,7 +79,9 @@ export default function Companies() {
             Gerencie o acesso e a situação financeira dos seus clientes.
           </p>
         </div>
-        <Button>Adicionar Empresa</Button>
+        <Button onClick={() => setIsOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Adicionar Empresa
+        </Button>
       </div>
 
       <Card>
@@ -59,24 +89,20 @@ export default function Companies() {
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome ou plano..."
+              placeholder="Buscar por nome ou CNPJ..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="sm" className="hidden sm:flex gap-2">
-            <SlidersHorizontal className="h-4 w-4" /> Filtros
-          </Button>
         </div>
 
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead>Empresa</TableHead>
-              <TableHead>Plano (MRR)</TableHead>
+              <TableHead>CNPJ / Documento</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Módulos Ativos</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -84,43 +110,12 @@ export default function Companies() {
             {filteredCompanies.length > 0 ? (
               filteredCompanies.map((company) => (
                 <TableRow key={company.id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="font-medium">
-                    <div className="flex flex-col">
-                      <span>{company.name}</span>
-                      <span className="text-xs text-muted-foreground font-normal">
-                        {company.document}
-                      </span>
-                    </div>
-                  </TableCell>
+                  <TableCell className="font-medium">{company.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{company.tax_id || '-'}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span>{company.plan}</span>
-                      <span className="text-xs text-muted-foreground font-normal">
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(company.mrr)}
-                        /mês
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(company.status)}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {company.modules.length > 0 ? (
-                        company.modules.map((m, i) => (
-                          <Badge
-                            key={i}
-                            variant="secondary"
-                            className="text-[10px] bg-primary/10 text-primary hover:bg-primary/20"
-                          >
-                            {m}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </div>
+                    <Badge variant={company.status === 'active' ? 'default' : 'secondary'}>
+                      {company.status}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -138,7 +133,7 @@ export default function Companies() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                   Nenhuma empresa encontrada.
                 </TableCell>
               </TableRow>
@@ -146,6 +141,48 @@ export default function Companies() {
           </TableBody>
         </Table>
       </Card>
+
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Empresa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome / Razão Social</Label>
+              <Input
+                value={formData.name || ''}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>CNPJ / CPF</Label>
+              <Input
+                value={formData.tax_id || ''}
+                onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(val: any) => setFormData({ ...formData, status: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="inactive">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleCreate}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

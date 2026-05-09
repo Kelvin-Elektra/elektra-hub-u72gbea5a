@@ -1,4 +1,5 @@
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
 import {
   SidebarProvider,
   Sidebar,
@@ -9,8 +10,18 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
   SidebarInset,
+  SidebarFooter,
 } from '@/components/ui/sidebar'
-import { LayoutDashboard, Building2, Users, Settings, Bell, Search, Plug } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Building2,
+  Users as UsersIcon,
+  Settings,
+  Bell,
+  Search,
+  Plug,
+  LogOut,
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -24,6 +35,13 @@ import {
 
 export default function Layout() {
   const location = useLocation()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const handleSignOut = () => {
+    signOut()
+    navigate('/login')
+  }
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
@@ -73,7 +91,7 @@ export default function Layout() {
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isActive('/usuarios')} tooltip="Usuários">
                 <Link to="/usuarios">
-                  <Users />
+                  <UsersIcon />
                   <span>Usuários</span>
                 </Link>
               </SidebarMenuButton>
@@ -82,16 +100,38 @@ export default function Layout() {
               <SidebarMenuButton
                 asChild
                 isActive={isActive('/configuracoes')}
-                tooltip="Configurações"
+                tooltip="Módulos & Conf"
               >
                 <Link to="/configuracoes">
                   <Settings />
-                  <span>Configurações</span>
+                  <span>Módulos & Conf</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
+        <SidebarFooter className="p-4 border-t border-sidebar-border/50">
+          <div className="flex items-center gap-3 mb-4">
+            <Avatar className="h-8 w-8">
+              <AvatarImage
+                src={`https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`}
+              />
+              <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-medium truncate">{user?.name || 'Admin'}</span>
+              <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="w-full justify-start text-muted-foreground"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sair
+          </Button>
+        </SidebarFooter>
       </Sidebar>
 
       <SidebarInset>
@@ -130,8 +170,10 @@ export default function Layout() {
               <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full border-2 border-background" />
             </Button>
             <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-transparent hover:ring-border transition-all">
-              <AvatarImage src="https://img.usecurling.com/ppl/thumbnail?gender=male&seed=3" />
-              <AvatarFallback>AD</AvatarFallback>
+              <AvatarImage
+                src={`https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`}
+              />
+              <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
             </Avatar>
           </div>
         </header>

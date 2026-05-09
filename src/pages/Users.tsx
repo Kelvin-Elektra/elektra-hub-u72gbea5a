@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import {
   Table,
@@ -11,16 +11,32 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Search } from 'lucide-react'
-import { mockUsers } from '@/lib/data'
+import { getUsers, type User } from '@/services/api'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Users() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [users, setUsers] = useState<User[]>([])
 
-  const filteredUsers = mockUsers.filter(
+  const loadData = async () => {
+    try {
+      const data = await getUsers()
+      setUsers(data)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+  useRealtime('users', loadData)
+
+  const filteredUsers = users.filter(
     (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.companyName.toLowerCase().includes(searchTerm.toLowerCase()),
+      (u.expand?.company_id?.name || '').toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -48,9 +64,8 @@ export default function Users() {
             <TableRow className="bg-muted/50">
               <TableHead>Usuário</TableHead>
               <TableHead>Empresa</TableHead>
-              <TableHead>Nível de Acesso</TableHead>
-              <TableHead>Último Login</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Papel</TableHead>
+              <TableHead>Criado em</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -59,37 +74,24 @@ export default function Users() {
                 <TableRow key={user.id}>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-medium">{user.name}</span>
+                      <span className="font-medium">{user.name || 'Sem Nome'}</span>
                       <span className="text-xs text-muted-foreground">{user.email}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{user.companyName}</TableCell>
+                  <TableCell>{user.expand?.company_id?.name || 'Administração Hub'}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        user.role === 'Admin' ? 'bg-primary/10 text-primary border-primary/20' : ''
-                      }
-                    >
-                      {user.role}
+                    <Badge variant={user.role === 'Admin' ? 'default' : 'outline'}>
+                      {user.role || 'User'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{user.lastLogin}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center gap-1.5 text-sm font-medium ${user.status === 'Ativo' ? 'text-emerald-600' : 'text-muted-foreground'}`}
-                    >
-                      <span
-                        className={`h-2 w-2 rounded-full ${user.status === 'Ativo' ? 'bg-emerald-500' : 'bg-muted-foreground'}`}
-                      ></span>
-                      {user.status}
-                    </span>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(user.created).toLocaleDateString('pt-BR')}
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
