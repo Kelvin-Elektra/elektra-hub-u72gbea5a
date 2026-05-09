@@ -1,8 +1,7 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import Index from './pages/Index'
 import Companies from './pages/Companies'
@@ -10,13 +9,27 @@ import CompanyDetail from './pages/CompanyDetail'
 import Users from './pages/Users'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import Portal from './pages/Portal'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
+import PortalLayout from './components/PortalLayout'
 
-const RequireAuth = () => {
+const RequireAuth = ({ allowedRoles }: { allowedRoles?: string[] }) => {
   const { user, loading } = useAuth()
+  const location = useLocation()
+
   if (loading) return null
-  return user ? <Outlet /> : <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace />
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to={user.role === 'Admin' ? '/' : '/portal'} replace />
+  }
+
+  if (user.role !== 'Admin' && location.pathname === '/') {
+    return <Navigate to="/portal" replace />
+  }
+
+  return <Outlet />
 }
 
 const App = () => (
@@ -27,7 +40,14 @@ const App = () => (
         <Sonner position="top-right" richColors />
         <Routes>
           <Route path="/login" element={<Login />} />
+
           <Route element={<RequireAuth />}>
+            <Route element={<PortalLayout />}>
+              <Route path="/portal" element={<Portal />} />
+            </Route>
+          </Route>
+
+          <Route element={<RequireAuth allowedRoles={['Admin']} />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Index />} />
               <Route path="/empresas" element={<Companies />} />
@@ -36,6 +56,7 @@ const App = () => (
               <Route path="/configuracoes" element={<Settings />} />
             </Route>
           </Route>
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </TooltipProvider>

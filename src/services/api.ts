@@ -82,15 +82,15 @@ export const updateSubscription = (id: string, data: Partial<Subscription>) =>
   pb.collection('subscriptions').update<Subscription>(id, data)
 
 export const getSyncLogs = () =>
-  pb
-    .collection('sync_logs')
-    .getFullList<SyncLog>({
-      expand: 'subscription_id,subscription_id.company_id,subscription_id.module_id',
-      sort: '-created',
-      requestKey: null,
-    })
+  pb.collection('sync_logs').getFullList<SyncLog>({
+    expand: 'subscription_id,subscription_id.company_id,subscription_id.module_id',
+    sort: '-created',
+    requestKey: null,
+  })
 
 export const getUsers = () =>
   pb.collection('users').getFullList<User>({ expand: 'company_id', sort: '-created' })
 export const getCompanyUsers = (companyId: string) =>
   pb.collection('users').getFullList<User>({ filter: `company_id = '${companyId}'` })
+export const createUser = (data: Partial<User> & { password?: string; passwordConfirm?: string }) =>
+  pb.collection('users').create<User>(data)

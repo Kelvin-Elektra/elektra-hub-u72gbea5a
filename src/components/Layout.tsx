@@ -66,7 +66,7 @@ export default function Layout() {
               <Plug className="text-primary-foreground h-5 w-5" />
             </div>
             <span className="font-bold text-lg text-sidebar-foreground truncate group-data-[collapsible=icon]:hidden">
-              Master Hub
+              Elektra HUB
             </span>
           </div>
         </SidebarHeader>
