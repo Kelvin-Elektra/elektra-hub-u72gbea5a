@@ -67,6 +67,7 @@ export default function Layout() {
             </div>
             <span className="font-bold text-lg text-sidebar-foreground truncate group-data-[collapsible=icon]:hidden">
               Elektra HUB
+              <br />
             </span>
           </div>
         </SidebarHeader>
