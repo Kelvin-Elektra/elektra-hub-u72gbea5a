@@ -1,0 +1,158 @@
+export const mockMetrics = {
+  mrr: 145200.5,
+  activeSubs: 842,
+  pendingPayments: 23,
+  churnRate: 1.2,
+}
+
+export const mockGrowthData = [
+  { month: 'Dez', revenue: 95000, subs: 700 },
+  { month: 'Jan', revenue: 102000, subs: 730 },
+  { month: 'Fev', revenue: 108000, subs: 760 },
+  { month: 'Mar', revenue: 115000, subs: 800 },
+  { month: 'Abr', revenue: 119000, subs: 820 },
+  { month: 'Mai', revenue: 145200, subs: 842 },
+]
+
+export const mockModuleDist = [
+  { module: 'Elektra CRM', value: 650, fill: 'hsl(var(--chart-1))' },
+  { module: 'Nexus ERP', value: 140, fill: 'hsl(var(--chart-2))' },
+  { module: 'Somente API', value: 52, fill: 'hsl(var(--chart-3))' },
+]
+
+export const mockActivity = [
+  {
+    id: 1,
+    title: 'Nova assinatura',
+    description: 'TechCorp Brasil assinou Elektra CRM',
+    time: 'Há 5 minutos',
+    type: 'success',
+  },
+  {
+    id: 2,
+    title: 'Pagamento pendente',
+    description: 'Fatura #4023 de Inova Sistemas',
+    time: 'Há 2 horas',
+    type: 'warning',
+  },
+  {
+    id: 3,
+    title: 'Sincronização falhou',
+    description: 'Erro ao enviar dados para Elektra CRM (ID: 932)',
+    time: 'Há 4 horas',
+    type: 'error',
+  },
+  {
+    id: 4,
+    title: 'Cancelamento (Churn)',
+    description: 'Mega Logística cancelou o plano',
+    time: 'Ontem',
+    type: 'error',
+  },
+]
+
+export const mockCompanies = [
+  {
+    id: '1',
+    name: 'TechCorp Brasil',
+    email: 'contato@techcorp.com.br',
+    document: '12.345.678/0001-90',
+    plan: 'Enterprise',
+    status: 'Ativo',
+    modules: ['Elektra CRM', 'Nexus ERP'],
+    mrr: 2500,
+    nextBilling: '2026-05-15',
+    created: '2025-01-10',
+  },
+  {
+    id: '2',
+    name: 'Inova Sistemas',
+    email: 'financeiro@inova.com.br',
+    document: '98.765.432/0001-10',
+    plan: 'Pro',
+    status: 'Inadimplente',
+    modules: ['Elektra CRM'],
+    mrr: 800,
+    nextBilling: '2026-05-01',
+    created: '2025-02-15',
+  },
+  {
+    id: '3',
+    name: 'Mega Logística',
+    email: 'adm@megalog.com.br',
+    document: '11.222.333/0001-44',
+    plan: 'Starter',
+    status: 'Cancelado',
+    modules: [],
+    mrr: 0,
+    nextBilling: '-',
+    created: '2025-03-01',
+  },
+  {
+    id: '4',
+    name: 'Varejo Plus',
+    email: 'contato@varejoplus.com.br',
+    document: '55.666.777/0001-88',
+    plan: 'Pro',
+    status: 'Ativo',
+    modules: ['Elektra CRM'],
+    mrr: 800,
+    nextBilling: '2026-05-20',
+    created: '2025-04-10',
+  },
+  {
+    id: '5',
+    name: 'AgroSul SA',
+    email: 'ti@agrosul.com.br',
+    document: '99.888.777/0001-22',
+    plan: 'Enterprise',
+    status: 'Bloqueado',
+    modules: ['Nexus ERP'],
+    mrr: 3200,
+    nextBilling: '2026-05-10',
+    created: '2025-01-05',
+  },
+]
+
+export const mockUsers = [
+  {
+    id: '101',
+    name: 'João Silva',
+    email: 'joao@techcorp.com.br',
+    companyId: '1',
+    companyName: 'TechCorp Brasil',
+    role: 'Admin',
+    status: 'Ativo',
+    lastLogin: 'Hoje, 09:30',
+  },
+  {
+    id: '102',
+    name: 'Maria Souza',
+    email: 'maria@techcorp.com.br',
+    companyId: '1',
+    companyName: 'TechCorp Brasil',
+    role: 'Usuário',
+    status: 'Ativo',
+    lastLogin: 'Ontem, 14:15',
+  },
+  {
+    id: '103',
+    name: 'Pedro Costa',
+    email: 'pedro@inova.com.br',
+    companyId: '2',
+    companyName: 'Inova Sistemas',
+    role: 'Admin',
+    status: 'Inativo',
+    lastLogin: 'Há 15 dias',
+  },
+  {
+    id: '104',
+    name: 'Ana Oliveira',
+    email: 'ana@varejoplus.com.br',
+    companyId: '4',
+    companyName: 'Varejo Plus',
+    role: 'Admin',
+    status: 'Ativo',
+    lastLogin: 'Hoje, 10:45',
+  },
+]
