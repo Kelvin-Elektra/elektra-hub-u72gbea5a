@@ -41,7 +41,31 @@ export interface Settings extends RecordModel {
   logo?: string
 }
 
+export interface User extends RecordModel {
+  name: string
+  email: string
+  role: string
+  company_id?: string
+}
+
 export const getCompanies = async () => pb.collection<Company>('companies').getFullList()
+
+export const getCompany = async (id: string) => pb.collection<Company>('companies').getOne(id)
+
+export const createCompany = async (data: Partial<Company>) =>
+  pb.collection('companies').create(data)
+
+export const updateCompany = async (id: string, data: Partial<Company>) =>
+  pb.collection('companies').update(id, data)
+
+export const getCompanyUsers = async (companyId: string) =>
+  pb.collection<User>('users').getFullList({ filter: `company_id = '${companyId}'` })
+
+export const createSubscription = async (data: Partial<Subscription>) =>
+  pb.collection('subscriptions').create(data)
+
+export const updateSubscription = async (id: string, data: Partial<Subscription>) =>
+  pb.collection('subscriptions').update(id, data)
 
 export const getSubscriptions = async () =>
   pb.collection<Subscription>('subscriptions').getFullList({ expand: 'company_id,module_id' })

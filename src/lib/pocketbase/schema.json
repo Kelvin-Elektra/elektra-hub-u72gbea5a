@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-10T00:33:02.225Z",
+  "generatedAt": "2026-05-10T00:36:14.836Z",
   "collections": [
     {
       "name": "users",
@@ -64,7 +64,7 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
+        "create": "",
         "update": "@request.auth.id != ''",
         "delete": "@request.auth.id != ''"
       },
@@ -160,6 +160,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "access_url",
+          "type": "url",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -265,6 +271,46 @@
         {
           "name": "error_message",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "settings",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": null,
+        "update": "@request.auth.role = 'Admin'",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "logo",
+          "type": "file",
           "required": false,
           "system": false
         },
