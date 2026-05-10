@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-10T00:59:09.102Z",
+  "generatedAt": "2026-05-10T01:23:42.302Z",
   "collections": [
     {
       "name": "users",
@@ -39,18 +39,72 @@
           "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
-          "name": "company_id",
-          "type": "relation",
-          "required": false,
-          "system": false,
-          "collectionRef": "companies"
-        },
-        {
           "name": "role",
           "type": "select",
           "required": false,
           "system": false,
           "selectValues": ["Admin", "User"]
+        },
+        {
+          "name": "person_type",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["PF", "PJ"]
+        },
+        {
+          "name": "tax_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "company_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "postal_code",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "complement",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "neighborhood",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -182,13 +236,6 @@
       },
       "fields": [
         {
-          "name": "company_id",
-          "type": "relation",
-          "required": true,
-          "system": false,
-          "collectionRef": "companies"
-        },
-        {
           "name": "module_id",
           "type": "relation",
           "required": true,
@@ -239,6 +286,13 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
         }
       ],
       "indexes": []

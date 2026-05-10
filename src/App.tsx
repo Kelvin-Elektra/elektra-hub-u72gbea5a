@@ -4,8 +4,8 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import Index from './pages/Index'
-import Companies from './pages/Companies'
-import CompanyDetail from './pages/CompanyDetail'
+import Subscriptions from './pages/Subscriptions'
+import SubscriptionDetail from './pages/SubscriptionDetail'
 import Users from './pages/Users'
 import Settings from './pages/Settings'
 import Auth from './pages/Auth'
@@ -77,8 +77,8 @@ const App = () => (
           <Route element={<RequireAuth allowedRoles={['Admin']} />}>
             <Route element={<Layout />}>
               <Route path="/admin" element={<Index />} />
-              <Route path="/admin/empresas" element={<Companies />} />
-              <Route path="/admin/empresas/:id" element={<CompanyDetail />} />
+              <Route path="/admin/assinaturas" element={<Subscriptions />} />
+              <Route path="/admin/assinaturas/:id" element={<SubscriptionDetail />} />
               <Route path="/admin/usuarios" element={<Users />} />
               <Route path="/admin/configuracoes" element={<Settings />} />
             </Route>

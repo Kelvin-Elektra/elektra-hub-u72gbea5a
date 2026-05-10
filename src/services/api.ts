@@ -17,12 +17,14 @@ export interface Module extends RecordModel {
 }
 
 export interface Subscription extends RecordModel {
-  company_id: string
+  user_id: string
   module_id: string
   status: string
   price?: number
+  asaas_customer_id?: string
+  asaas_subscription_id?: string
   expand?: {
-    company_id?: Company
+    user_id?: User
     module_id?: Module
   }
 }
@@ -45,24 +47,23 @@ export interface User extends RecordModel {
   name: string
   email: string
   role: string
-  company_id?: string
+  person_type?: 'PF' | 'PJ'
+  tax_id?: string
+  company_name?: string
+  postal_code?: string
+  address?: string
+  address_number?: string
+  complement?: string
+  neighborhood?: string
+  city?: string
+  state?: string
 }
 
-export const getCompanies = async () => pb.collection<Company>('companies').getFullList()
+export const getUser = async (id: string) => pb.collection<User>('users').getOne(id)
+export const updateUser = async (id: string, data: Partial<User>) =>
+  pb.collection('users').update(id, data)
 
-export const getCompany = async (id: string) => pb.collection<Company>('companies').getOne(id)
-
-export const createCompany = async (data: Partial<Company>) =>
-  pb.collection('companies').create(data)
-
-export const updateCompany = async (id: string, data: Partial<Company>) =>
-  pb.collection('companies').update(id, data)
-
-export const getCompanyUsers = async (companyId: string) =>
-  pb.collection<User>('users').getFullList({ filter: `company_id = '${companyId}'` })
-
-export const getUsers = async () =>
-  pb.collection<User>('users').getFullList({ expand: 'company_id' })
+export const getUsers = async () => pb.collection<User>('users').getFullList()
 
 export const createUser = async (data: Partial<User>) => pb.collection('users').create(data)
 
@@ -73,12 +74,12 @@ export const updateSubscription = async (id: string, data: Partial<Subscription>
   pb.collection('subscriptions').update(id, data)
 
 export const getSubscriptions = async () =>
-  pb.collection<Subscription>('subscriptions').getFullList({ expand: 'company_id,module_id' })
+  pb.collection<Subscription>('subscriptions').getFullList({ expand: 'user_id,module_id' })
 
 export const getSyncLogs = async () =>
   pb.collection<SyncLog>('sync_logs').getFullList({
     sort: '-created',
-    expand: 'subscription_id.company_id,subscription_id.module_id',
+    expand: 'subscription_id.user_id,subscription_id.module_id',
   })
 
 export const getModules = async () => pb.collection<Module>('modules').getFullList()
@@ -88,10 +89,8 @@ export const createModule = async (data: Partial<Module>) => pb.collection('modu
 export const updateModule = async (id: string, data: Partial<Module>) =>
   pb.collection('modules').update(id, data)
 
-export const getCompanySubscriptions = async (companyId: string) =>
-  pb
-    .collection<Subscription>('subscriptions')
-    .getFullList({ filter: `company_id = '${companyId}'` })
+export const getUserSubscriptions = async (userId: string) =>
+  pb.collection<Subscription>('subscriptions').getFullList({ filter: `user_id = '${userId}'` })
 
 export const getSettings = async () => {
   const records = await pb.collection<Settings>('settings').getFullList()

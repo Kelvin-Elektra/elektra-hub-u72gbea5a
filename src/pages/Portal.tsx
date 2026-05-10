@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink, Lock, CheckCircle2, PackageSearch } from 'lucide-react'
-import { getCompanySubscriptions, getModules, type Subscription, type Module } from '@/services/api'
+import { getUserSubscriptions, getModules, type Subscription, type Module } from '@/services/api'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 
@@ -20,12 +20,9 @@ export default function Portal() {
   const [modules, setModules] = useState<Module[]>([])
 
   const loadData = async () => {
-    if (!user?.company_id) return
+    if (!user?.id) return
     try {
-      const [subs, mods] = await Promise.all([
-        getCompanySubscriptions(user.company_id),
-        getModules(),
-      ])
+      const [subs, mods] = await Promise.all([getUserSubscriptions(user.id), getModules()])
       setSubscriptions(subs)
       setModules(mods.filter((m) => m.status !== 'deprecated'))
     } catch (e) {
@@ -35,7 +32,7 @@ export default function Portal() {
 
   useEffect(() => {
     loadData()
-  }, [user?.company_id])
+  }, [user?.id])
 
   useRealtime('subscriptions', loadData)
   useRealtime('modules', loadData)

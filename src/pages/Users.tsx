@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Search, Plus } from 'lucide-react'
-import { getUsers, getCompanies, createUser, type User, type Company } from '@/services/api'
+import { getUsers, createUser, type User } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
@@ -35,16 +35,14 @@ import { getErrorMessage } from '@/lib/pocketbase/errors'
 export default function Users() {
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState<User[]>([])
-  const [companies, setCompanies] = useState<Company[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [formData, setFormData] = useState<any>({ role: 'User', company_id: '' })
+  const [formData, setFormData] = useState<any>({ role: 'User' })
   const [loading, setLoading] = useState(false)
 
   const loadData = async () => {
     try {
-      const [usrData, compData] = await Promise.all([getUsers(), getCompanies()])
+      const usrData = await getUsers()
       setUsers(usrData)
-      setCompanies(compData)
     } catch (e) {
       console.error(e)
     }
@@ -54,13 +52,11 @@ export default function Users() {
     loadData()
   }, [])
   useRealtime('users', loadData)
-  useRealtime('companies', loadData)
 
   const filteredUsers = users.filter(
     (u) =>
       (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.expand?.company_id?.name || '').toLowerCase().includes(searchTerm.toLowerCase()),
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const handleCreate = async () => {
@@ -76,13 +72,10 @@ export default function Users() {
     setLoading(true)
     try {
       const dataToSubmit = { ...formData }
-      if (dataToSubmit.role === 'Admin') {
-        dataToSubmit.company_id = null
-      }
       await createUser(dataToSubmit)
       toast.success('Usuário criado com sucesso.')
       setIsOpen(false)
-      setFormData({ role: 'User', company_id: '' })
+      setFormData({ role: 'User' })
       loadData()
     } catch (e) {
       toast.error(getErrorMessage(e))
@@ -119,7 +112,7 @@ export default function Users() {
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead>Usuário</TableHead>
-              <TableHead>Empresa</TableHead>
+              <TableHead>Tipo/Documento</TableHead>
               <TableHead>Papel</TableHead>
               <TableHead>Criado em</TableHead>
             </TableRow>
@@ -134,7 +127,20 @@ export default function Users() {
                       <span className="text-xs text-muted-foreground">{user.email}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{user.expand?.company_id?.name || 'Administração Hub'}</TableCell>
+                  <TableCell>
+                    {user.person_type ? (
+                      <div className="flex flex-col">
+                        <span className="text-sm">
+                          {user.person_type} - {user.tax_id}
+                        </span>
+                        {user.company_name && (
+                          <span className="text-xs text-muted-foreground">{user.company_name}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={user.role === 'Admin' ? 'default' : 'outline'}>
                       {user.role || 'User'}
@@ -214,27 +220,6 @@ export default function Users() {
                 />
               </div>
             </div>
-
-            {formData.role === 'User' && (
-              <div className="space-y-2 animate-in fade-in zoom-in duration-200">
-                <Label>Empresa Vinculada</Label>
-                <Select
-                  value={formData.company_id}
-                  onValueChange={(val) => setFormData({ ...formData, company_id: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a empresa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((comp) => (
-                      <SelectItem key={comp.id} value={comp.id}>
-                        {comp.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
           <DialogFooter>
             <Button onClick={handleCreate} disabled={loading}>
