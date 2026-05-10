@@ -1,96 +1,75 @@
 import pb from '@/lib/pocketbase/client'
+import { RecordModel } from 'pocketbase'
 
-export interface Company {
-  id: string
+export interface Company extends RecordModel {
   name: string
-  tax_id: string
-  status: 'active' | 'inactive'
-  created: string
+  tax_id?: string
+  status: string
 }
 
-export interface Module {
-  id: string
+export interface Module extends RecordModel {
   name: string
-  endpoint_url: string
-  secret_key_name: string
+  endpoint_url?: string
+  access_url?: string
+  secret_key_name?: string
   base_price: number
-  status: 'active' | 'maintenance' | 'deprecated'
+  status: string
 }
 
-export interface Subscription {
-  id: string
+export interface Subscription extends RecordModel {
   company_id: string
   module_id: string
-  status: 'trialing' | 'active' | 'overdue' | 'canceled'
-  price: number
-  next_billing_date: string
-  asaas_customer_id: string
-  asaas_subscription_id: string
+  status: string
+  price?: number
   expand?: {
-    module_id?: Module
     company_id?: Company
+    module_id?: Module
   }
 }
 
-export interface SyncLog {
-  id: string
+export interface SyncLog extends RecordModel {
   subscription_id: string
-  status: 'success' | 'failed'
-  error_message: string
-  created: string
+  status: string
+  error_message?: string
   expand?: {
     subscription_id?: Subscription
   }
 }
 
-export interface User {
-  id: string
+export interface Settings extends RecordModel {
   name: string
-  email: string
-  company_id: string
-  role: 'Admin' | 'User'
-  created: string
-  expand?: {
-    company_id?: Company
-  }
+  logo?: string
 }
 
-export const getCompanies = () =>
-  pb.collection('companies').getFullList<Company>({ sort: '-created' })
-export const getCompany = (id: string) => pb.collection('companies').getOne<Company>(id)
-export const createCompany = (data: Partial<Company>) =>
-  pb.collection('companies').create<Company>(data)
-export const updateCompany = (id: string, data: Partial<Company>) =>
-  pb.collection('companies').update<Company>(id, data)
+export const getCompanies = async () => pb.collection<Company>('companies').getFullList()
 
-export const getModules = () => pb.collection('modules').getFullList<Module>({ sort: '-created' })
-export const createModule = (data: Partial<Module>) => pb.collection('modules').create<Module>(data)
-export const updateModule = (id: string, data: Partial<Module>) =>
-  pb.collection('modules').update<Module>(id, data)
+export const getSubscriptions = async () =>
+  pb.collection<Subscription>('subscriptions').getFullList({ expand: 'company_id,module_id' })
 
-export const getSubscriptions = () =>
+export const getSyncLogs = async () =>
   pb
-    .collection('subscriptions')
-    .getFullList<Subscription>({ expand: 'module_id,company_id', sort: '-created' })
-export const getCompanySubscriptions = (companyId: string) =>
+    .collection<SyncLog>('sync_logs')
+    .getFullList({
+      sort: '-created',
+      expand: 'subscription_id.company_id,subscription_id.module_id',
+    })
+
+export const getModules = async () => pb.collection<Module>('modules').getFullList()
+
+export const createModule = async (data: Partial<Module>) => pb.collection('modules').create(data)
+
+export const updateModule = async (id: string, data: Partial<Module>) =>
+  pb.collection('modules').update(id, data)
+
+export const getCompanySubscriptions = async (companyId: string) =>
   pb
-    .collection('subscriptions')
-    .getFullList<Subscription>({ filter: `company_id = '${companyId}'`, expand: 'module_id' })
-export const createSubscription = (data: Partial<Subscription>) =>
-  pb.collection('subscriptions').create<Subscription>(data)
-export const updateSubscription = (id: string, data: Partial<Subscription>) =>
-  pb.collection('subscriptions').update<Subscription>(id, data)
+    .collection<Subscription>('subscriptions')
+    .getFullList({ filter: `company_id = '${companyId}'` })
 
-export const getSyncLogs = () =>
-  pb.collection('sync_logs').getFullList<SyncLog>({
-    expand: 'subscription_id,subscription_id.company_id,subscription_id.module_id',
-    sort: '-created',
-    requestKey: null,
-  })
+export const getSettings = async () => {
+  const records = await pb.collection<Settings>('settings').getFullList()
+  return records[0]
+}
 
-export const getUsers = () =>
-  pb.collection('users').getFullList<User>({ expand: 'company_id', sort: '-created' })
-export const getCompanyUsers = (companyId: string) =>
-  pb.collection('users').getFullList<User>({ filter: `company_id = '${companyId}'` })
-export const createUser = (data: Partial<User> & { password?: string; passwordConfirm?: string }) =>
-  pb.collection('users').create<User>(data)
+export const updateSettings = async (id: string, data: FormData | Partial<Settings>) =>
+  pb.collection('settings').update(id, data)

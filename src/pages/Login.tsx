@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Plug } from 'lucide-react'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
@@ -18,7 +25,7 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
-      navigate(user.role === 'Admin' ? '/' : '/portal')
+      navigate(user.role === 'Admin' ? '/admin' : '/cliente')
     }
   }, [user, navigate])
 
@@ -34,16 +41,16 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md bg-card border-border shadow-elevation">
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center">
               <Plug className="text-primary-foreground h-6 w-6" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Elektra HUB - Admin</CardTitle>
-          <CardDescription>Acesse sua conta de administrador</CardDescription>
+          <CardTitle className="text-2xl font-display">Elektra HUB</CardTitle>
+          <CardDescription>Acesse sua conta</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -52,7 +59,7 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@exemplo.com"
+                placeholder="usuario@exemplo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -74,6 +81,17 @@ export default function Login() {
             </Button>
           </form>
         </CardContent>
+        <CardFooter className="flex justify-center border-t border-border pt-6 mt-2">
+          <p className="text-sm text-muted-foreground">
+            Não possui conta?{' '}
+            <Link
+              to="/register"
+              className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors"
+            >
+              Cadastre-se
+            </Link>
+          </p>
+        </CardFooter>
       </Card>
     </div>
   )

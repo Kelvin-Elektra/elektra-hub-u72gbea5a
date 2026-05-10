@@ -26,22 +26,35 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Plus, Edit2, Server } from 'lucide-react'
+import { Plus, Edit2, ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import { getModules, createModule, updateModule, type Module } from '@/services/api'
+import {
+  getModules,
+  createModule,
+  updateModule,
+  getSettings,
+  updateSettings,
+  type Module,
+  type Settings as SettingsType,
+} from '@/services/api'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
 import { useRealtime } from '@/hooks/use-realtime'
+import pb from '@/lib/pocketbase/client'
 
 export default function Settings() {
   const [modules, setModules] = useState<Module[]>([])
+  const [settings, setSettingsState] = useState<SettingsType | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Partial<Module>>({ status: 'active', base_price: 0 })
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const loadData = async () => {
     try {
-      const data = await getModules()
-      setModules(data)
+      const [modData, setObj] = await Promise.all([getModules(), getSettings()])
+      setModules(modData)
+      setSettingsState(setObj)
     } catch (e) {
       console.error(e)
     }
@@ -51,6 +64,7 @@ export default function Settings() {
     loadData()
   }, [])
   useRealtime('modules', loadData)
+  useRealtime('settings', loadData)
 
   const handleOpen = (mod?: Module) => {
     if (mod) {
@@ -79,34 +93,94 @@ export default function Settings() {
     }
   }
 
+  const handleLogoUpload = async () => {
+    if (!logoFile) return
+    setIsUploading(true)
+    try {
+      const data = new FormData()
+      data.append('logo', logoFile)
+      if (settings?.id) {
+        await updateSettings(settings.id, data)
+        toast.success('Logo atualizada com sucesso.')
+        setLogoFile(null)
+        loadData()
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e))
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Módulos & Configurações</h1>
           <p className="text-muted-foreground">
-            Gerencie o catálogo de softwares, integrações e preços base.
+            Gerencie a identidade visual e o catálogo de softwares.
           </p>
         </div>
-        <Button onClick={() => handleOpen()} className="gap-2">
-          <Plus className="h-4 w-4" /> Adicionar Módulo
-        </Button>
       </div>
 
-      <Card>
+      <Card className="border-border">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 text-primary" />
+            <CardTitle>Identidade Visual</CardTitle>
+          </div>
+          <CardDescription>
+            Logo do sistema (exibida no painel Admin e portal do Cliente).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          <div className="h-20 w-40 bg-muted/50 rounded-lg flex items-center justify-center border border-border overflow-hidden p-2 shrink-0">
+            {settings?.logo ? (
+              <img
+                src={pb.files.getURL(settings, settings.logo)}
+                alt="Logo"
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <span className="text-xs text-muted-foreground font-medium">Sem logo</span>
+            )}
+          </div>
+          <div className="flex-1 flex flex-col gap-3">
+            <Label>Fazer upload de nova logo</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                className="max-w-sm cursor-pointer file:text-primary file:font-medium"
+              />
+              <Button onClick={handleLogoUpload} disabled={!logoFile || isUploading}>
+                {isUploading ? 'Salvando...' : 'Salvar Logo'}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Recomendado: PNG ou SVG com fundo transparente.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div className="space-y-1">
             <CardTitle className="text-xl">Catálogo de Módulos</CardTitle>
             <CardDescription>Sistemas disponíveis para assinatura no Hub.</CardDescription>
           </div>
-          <Server className="h-6 w-6 text-muted-foreground" />
+          <Button onClick={() => handleOpen()} className="gap-2">
+            <Plus className="h-4 w-4" /> Adicionar Módulo
+          </Button>
         </CardHeader>
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50">
+            <TableRow className="bg-muted/50 hover:bg-muted/50 border-border">
               <TableHead>Nome</TableHead>
-              <TableHead>Endpoint de Sync</TableHead>
-              <TableHead>Secret Key</TableHead>
+              <TableHead>Link de Acesso</TableHead>
+              <TableHead>Endpoint Sync</TableHead>
               <TableHead>Preço Base</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -115,16 +189,19 @@ export default function Settings() {
           <TableBody>
             {modules.length > 0 ? (
               modules.map((mod) => (
-                <TableRow key={mod.id}>
+                <TableRow key={mod.id} className="border-border hover:bg-muted/30">
                   <TableCell className="font-medium">{mod.name}</TableCell>
                   <TableCell
-                    className="text-sm text-muted-foreground truncate max-w-[200px]"
+                    className="text-sm text-muted-foreground truncate max-w-[150px]"
+                    title={mod.access_url}
+                  >
+                    {mod.access_url || '-'}
+                  </TableCell>
+                  <TableCell
+                    className="text-sm text-muted-foreground truncate max-w-[150px]"
                     title={mod.endpoint_url}
                   >
                     {mod.endpoint_url || '-'}
-                  </TableCell>
-                  <TableCell className="text-sm font-mono bg-muted/30 px-2 rounded w-max">
-                    {mod.secret_key_name || '-'}
                   </TableCell>
                   <TableCell>
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -181,7 +258,16 @@ export default function Settings() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Endpoint de Sincronização (Webhook)</Label>
+              <Label>Link de Acesso (Client Portal)</Label>
+              <Input
+                value={formData.access_url || ''}
+                onChange={(e) => setFormData({ ...formData, access_url: e.target.value })}
+                placeholder="https://app.exemplo.com"
+                type="url"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Endpoint de Sincronização (Webhook API)</Label>
               <Input
                 value={formData.endpoint_url || ''}
                 onChange={(e) => setFormData({ ...formData, endpoint_url: e.target.value })}

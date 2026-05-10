@@ -9,6 +9,7 @@ import CompanyDetail from './pages/CompanyDetail'
 import Users from './pages/Users'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import Portal from './pages/Portal'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
@@ -22,14 +23,24 @@ const RequireAuth = ({ allowedRoles }: { allowedRoles?: string[] }) => {
   if (!user) return <Navigate to="/login" replace />
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to={user.role === 'Admin' ? '/' : '/portal'} replace />
+    return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
   }
 
-  if (user.role !== 'Admin' && location.pathname === '/') {
-    return <Navigate to="/portal" replace />
+  if (user.role !== 'Admin' && location.pathname.startsWith('/admin')) {
+    return <Navigate to="/cliente" replace />
+  }
+  if (user.role === 'Admin' && location.pathname.startsWith('/cliente')) {
+    return <Navigate to="/admin" replace />
   }
 
   return <Outlet />
+}
+
+const RootRedirect = () => {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
+  return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
 }
 
 const App = () => (
@@ -39,21 +50,23 @@ const App = () => (
         <Toaster />
         <Sonner position="top-right" richColors />
         <Routes>
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-          <Route element={<RequireAuth />}>
+          <Route element={<RequireAuth allowedRoles={['User']} />}>
             <Route element={<PortalLayout />}>
-              <Route path="/portal" element={<Portal />} />
+              <Route path="/cliente" element={<Portal />} />
             </Route>
           </Route>
 
           <Route element={<RequireAuth allowedRoles={['Admin']} />}>
             <Route element={<Layout />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/empresas" element={<Companies />} />
-              <Route path="/empresas/:id" element={<CompanyDetail />} />
-              <Route path="/usuarios" element={<Users />} />
-              <Route path="/configuracoes" element={<Settings />} />
+              <Route path="/admin" element={<Index />} />
+              <Route path="/admin/empresas" element={<Companies />} />
+              <Route path="/admin/empresas/:id" element={<CompanyDetail />} />
+              <Route path="/admin/usuarios" element={<Users />} />
+              <Route path="/admin/configuracoes" element={<Settings />} />
             </Route>
           </Route>
 

@@ -1,190 +1,107 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
+import { Button } from '@/components/ui/button'
 import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-  SidebarInset,
-  SidebarFooter,
-} from '@/components/ui/sidebar'
-import {
+  Plug,
+  LogOut,
   LayoutDashboard,
   Building2,
   Users as UsersIcon,
-  Settings,
-  Bell,
-  Search,
-  Plug,
-  LogOut,
+  Settings as SettingsIcon,
 } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { useEffect, useState } from 'react'
+import pb from '@/lib/pocketbase/client'
 
 export default function Layout() {
-  const location = useLocation()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    pb.collection('settings')
+      .getFirstListItem('')
+      .then((settings) => {
+        if (settings.logo) {
+          setLogoUrl(pb.files.getURL(settings, settings.logo))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const handleSignOut = () => {
     signOut()
     navigate('/login')
   }
 
-  const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/'
-    return location.pathname.startsWith(path)
-  }
-
-  const getPageName = () => {
-    const path = location.pathname
-    if (path === '/') return 'Dashboard'
-    if (path.startsWith('/empresas')) return 'Empresas'
-    if (path.startsWith('/usuarios')) return 'Usuários'
-    if (path.startsWith('/configuracoes')) return 'Configurações'
-    return 'Página'
-  }
+  const navItems = [
+    { to: '/admin', icon: LayoutDashboard, label: 'Painel' },
+    { to: '/admin/empresas', icon: Building2, label: 'Empresas' },
+    { to: '/admin/usuarios', icon: UsersIcon, label: 'Usuários' },
+    { to: '/admin/configuracoes', icon: SettingsIcon, label: 'Configurações' },
+  ]
 
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader className="h-16 flex items-center justify-center border-b border-sidebar-border/50 px-4">
-          <div className="flex items-center gap-3 w-full">
-            <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center shrink-0">
-              <Plug className="text-primary-foreground h-5 w-5" />
+    <div className="min-h-screen flex bg-background text-foreground">
+      <aside className="w-64 border-r border-border bg-card flex flex-col shrink-0">
+        <div className="h-16 flex items-center px-6 border-b border-border">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-8 max-w-[160px] object-contain" />
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
+                <Plug className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="font-bold text-lg">Elektra Admin</span>
             </div>
-            <span className="font-bold text-lg text-sidebar-foreground truncate group-data-[collapsible=icon]:hidden">
-              Elektra HUB
-              <br />
-            </span>
-          </div>
-        </SidebarHeader>
-        <SidebarContent className="p-3">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive('/')} tooltip="Dashboard">
-                <Link to="/">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive('/empresas')} tooltip="Empresas">
-                <Link to="/empresas">
-                  <Building2 />
-                  <span>Empresas</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive('/usuarios')} tooltip="Usuários">
-                <Link to="/usuarios">
-                  <UsersIcon />
-                  <span>Usuários</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive('/configuracoes')}
-                tooltip="Módulos & Conf"
-              >
-                <Link to="/configuracoes">
-                  <Settings />
-                  <span>Módulos & Conf</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter className="p-4 border-t border-sidebar-border/50">
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar className="h-8 w-8">
-              <AvatarImage
-                src={`https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`}
-              />
-              <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-medium truncate">{user?.name || 'Admin'}</span>
-              <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+          )}
+        </div>
+        <nav className="flex-1 p-4 space-y-2">
+          {navItems.map((item) => {
+            const isActive =
+              location.pathname === item.to ||
+              (item.to !== '/admin' && location.pathname.startsWith(item.to))
+            return (
+              <Link key={item.to} to={item.to}>
+                <Button
+                  variant={isActive ? 'secondary' : 'ghost'}
+                  className={`w-full justify-start gap-3 hover:bg-muted transition-colors ${isActive ? 'bg-secondary' : 'text-muted-foreground'}`}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.label}
+                </Button>
+              </Link>
+            )
+          })}
+        </nav>
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="h-8 w-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold border border-primary/30 shrink-0">
+              {user?.name?.[0] || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
           <Button
             variant="outline"
-            className="w-full justify-start text-muted-foreground"
+            className="w-full justify-start text-muted-foreground border-border hover:bg-muted hover:text-foreground transition-colors"
             onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sair
           </Button>
-        </SidebarFooter>
-      </Sidebar>
+        </div>
+      </aside>
 
-      <SidebarInset>
-        <header className="h-16 px-6 flex items-center justify-between border-b bg-background shrink-0">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
-            <div className="hidden md:flex items-center">
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <span className="text-muted-foreground">Admin</span>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{getPageName()}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="relative hidden sm:block w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar empresas..."
-                className="pl-9 bg-muted/50 border-transparent focus-visible:bg-background"
-              />
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative text-muted-foreground hover:text-foreground"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-destructive rounded-full border-2 border-background" />
-            </Button>
-            <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-transparent hover:ring-border transition-all">
-              <AvatarImage
-                src={`https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`}
-              />
-              <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
-            </Avatar>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-auto bg-[#F8FAFC]">
-          <div className="p-6 md:p-8 max-w-7xl mx-auto w-full animate-fade-in">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex-1 overflow-auto p-8 animate-fade-in">
+          <div className="max-w-6xl mx-auto">
             <Outlet />
           </div>
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+        </div>
+      </main>
+    </div>
   )
 }

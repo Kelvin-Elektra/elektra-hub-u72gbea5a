@@ -46,9 +46,11 @@ export default function Portal() {
   const myModules = modules.filter((m) => activeModuleIds.includes(m.id))
   const availableModules = modules.filter((m) => !activeModuleIds.includes(m.id))
 
-  const getLaunchUrl = (endpointUrl: string) => {
+  const getLaunchUrl = (mod: Module) => {
+    if (mod.access_url) return mod.access_url
     try {
-      const url = new URL(endpointUrl)
+      if (!mod.endpoint_url) return '#'
+      const url = new URL(mod.endpoint_url)
       return `${url.protocol}//${url.host}`
     } catch {
       return '#'
@@ -86,11 +88,7 @@ export default function Portal() {
                 </CardContent>
                 <CardFooter>
                   <Button className="w-full gap-2 font-semibold" asChild>
-                    <a
-                      href={getLaunchUrl(mod.endpoint_url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    <a href={getLaunchUrl(mod)} target="_blank" rel="noopener noreferrer">
                       Acessar <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
