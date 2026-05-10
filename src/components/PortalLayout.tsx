@@ -29,7 +29,7 @@ export default function PortalLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <header className="h-16 px-6 flex items-center justify-between border-b border-border bg-card shrink-0 shadow-sm">
+      <header className="h-16 px-6 flex items-center justify-between border-b border-sidebar-border bg-sidebar text-sidebar-foreground shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           {logoUrl ? (
             <img src={logoUrl} alt="Logo" className="h-8 max-w-[150px] object-contain" />
@@ -38,7 +38,7 @@ export default function PortalLayout() {
               <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center shrink-0">
                 <Plug className="text-primary-foreground h-5 w-5" />
               </div>
-              <span className="font-bold text-lg">Elektra HUB</span>
+              <span className="font-bold text-lg text-sidebar-foreground">Elektra HUB</span>
             </>
           )}
         </div>
@@ -48,18 +48,20 @@ export default function PortalLayout() {
               <AvatarImage
                 src={`https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`}
               />
-              <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
+              <AvatarFallback className="text-foreground">{user?.name?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="hidden md:flex flex-col">
-              <span className="text-sm font-medium leading-none">{user?.name || 'User'}</span>
-              <span className="text-xs text-muted-foreground mt-1">{user?.email}</span>
+              <span className="text-sm font-medium leading-none text-sidebar-foreground">
+                {user?.name || 'User'}
+              </span>
+              <span className="text-xs text-sidebar-foreground/70 mt-1">{user?.email}</span>
             </div>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={handleSignOut}
-            className="text-muted-foreground border-border hover:bg-muted"
+            className="text-sidebar-foreground border-sidebar-border bg-sidebar-accent hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sair

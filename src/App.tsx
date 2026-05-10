@@ -8,10 +8,11 @@ import Companies from './pages/Companies'
 import CompanyDetail from './pages/CompanyDetail'
 import Users from './pages/Users'
 import Settings from './pages/Settings'
-import Login from './pages/Login'
-import Register from './pages/Register'
+import Auth from './pages/Auth'
 import Portal from './pages/Portal'
 import NotFound from './pages/NotFound'
+import VerifyEmail from './pages/VerifyEmail'
+import Unverified from './pages/Unverified'
 import Layout from './components/Layout'
 import PortalLayout from './components/PortalLayout'
 
@@ -21,6 +22,14 @@ const RequireAuth = ({ allowedRoles }: { allowedRoles?: string[] }) => {
 
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
+
+  if (!user.verified && location.pathname !== '/unverified') {
+    return <Navigate to="/unverified" replace />
+  }
+
+  if (user.verified && location.pathname === '/unverified') {
+    return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
+  }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
@@ -51,8 +60,13 @@ const App = () => (
         <Sonner position="top-right" richColors />
         <Routes>
           <Route path="/" element={<RootRedirect />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/register" element={<Auth />} />
+          <Route path="/verify" element={<VerifyEmail />} />
+
+          <Route element={<RequireAuth />}>
+            <Route path="/unverified" element={<Unverified />} />
+          </Route>
 
           <Route element={<RequireAuth allowedRoles={['User']} />}>
             <Route element={<PortalLayout />}>

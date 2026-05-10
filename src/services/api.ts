@@ -76,12 +76,10 @@ export const getSubscriptions = async () =>
   pb.collection<Subscription>('subscriptions').getFullList({ expand: 'company_id,module_id' })
 
 export const getSyncLogs = async () =>
-  pb
-    .collection<SyncLog>('sync_logs')
-    .getFullList({
-      sort: '-created',
-      expand: 'subscription_id.company_id,subscription_id.module_id',
-    })
+  pb.collection<SyncLog>('sync_logs').getFullList({
+    sort: '-created',
+    expand: 'subscription_id.company_id,subscription_id.module_id',
+  })
 
 export const getModules = async () => pb.collection<Module>('modules').getFullList()
 
