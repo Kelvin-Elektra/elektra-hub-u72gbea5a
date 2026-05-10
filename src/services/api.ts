@@ -59,6 +59,8 @@ export interface User extends RecordModel {
   state?: string
 }
 
+export const getCompanies = async () => pb.collection<Company>('companies').getFullList()
+
 export const getUser = async (id: string) => pb.collection<User>('users').getOne(id)
 export const updateUser = async (id: string, data: Partial<User>) =>
   pb.collection('users').update(id, data)
