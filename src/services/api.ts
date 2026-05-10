@@ -61,6 +61,11 @@ export const updateCompany = async (id: string, data: Partial<Company>) =>
 export const getCompanyUsers = async (companyId: string) =>
   pb.collection<User>('users').getFullList({ filter: `company_id = '${companyId}'` })
 
+export const getUsers = async () =>
+  pb.collection<User>('users').getFullList({ expand: 'company_id' })
+
+export const createUser = async (data: Partial<User>) => pb.collection('users').create(data)
+
 export const createSubscription = async (data: Partial<Subscription>) =>
   pb.collection('subscriptions').create(data)
 
