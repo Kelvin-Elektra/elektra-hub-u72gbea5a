@@ -3,150 +3,270 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ExternalLink, Lock, CheckCircle2, PackageSearch } from 'lucide-react'
-import { getUserSubscriptions, getModules, type Subscription, type Module } from '@/services/api'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { getModules, getUserSubscriptions, type Module, type Subscription } from '@/services/api'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
+import { toast } from 'sonner'
+import pb from '@/lib/pocketbase/client'
+import { Plug, CreditCard, Receipt, QrCode } from 'lucide-react'
 
 export default function Portal() {
   const { user } = useAuth()
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [modules, setModules] = useState<Module[]>([])
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [selectedModule, setSelectedModule] = useState<Module | null>(null)
+
+  const [paymentMethod, setPaymentMethod] = useState<'CREDIT_CARD' | 'PIX' | 'BOLETO'>(
+    'CREDIT_CARD',
+  )
+  const [ccNumber, setCcNumber] = useState('')
+  const [ccName, setCcName] = useState('')
+  const [ccExpiry, setCcExpiry] = useState('')
+  const [ccCvv, setCcCvv] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const loadData = async () => {
-    if (!user?.id) return
+    if (!user) return
     try {
-      const [subs, mods] = await Promise.all([getUserSubscriptions(user.id), getModules()])
+      const [mods, subs] = await Promise.all([getModules(), getUserSubscriptions(user.id)])
+      setModules(mods.filter((m) => m.status === 'active'))
       setSubscriptions(subs)
-      setModules(mods.filter((m) => m.status !== 'deprecated'))
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
+      console.error(error)
     }
   }
 
   useEffect(() => {
     loadData()
-  }, [user?.id])
-
+  }, [user])
   useRealtime('subscriptions', loadData)
   useRealtime('modules', loadData)
 
-  const activeSubs = subscriptions.filter((s) => s.status === 'active')
-  const activeModuleIds = activeSubs.map((s) => s.module_id)
+  const handleSubscribeClick = (mod: Module) => {
+    setSelectedModule(mod)
+    setIsCheckoutOpen(true)
+  }
 
-  const myModules = modules.filter((m) => activeModuleIds.includes(m.id))
-  const availableModules = modules.filter((m) => !activeModuleIds.includes(m.id))
+  const handleCheckout = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedModule) return
+    setLoading(true)
 
-  const getLaunchUrl = (mod: Module) => {
-    if (mod.access_url) return mod.access_url
     try {
-      if (!mod.endpoint_url) return '#'
-      const url = new URL(mod.endpoint_url)
-      return `${url.protocol}//${url.host}`
-    } catch {
-      return '#'
+      let expiryMonth = ''
+      let expiryYear = ''
+      if (paymentMethod === 'CREDIT_CARD') {
+        const parts = ccExpiry.split('/')
+        if (parts.length !== 2) throw new Error('Data de validade inválida. Use MM/AAAA')
+        expiryMonth = parts[0].trim()
+        expiryYear = parts[1].trim()
+        if (expiryYear.length === 2) expiryYear = '20' + expiryYear
+      }
+
+      await pb.send('/backend/v1/checkout', {
+        method: 'POST',
+        body: JSON.stringify({
+          moduleId: selectedModule.id,
+          paymentMethod,
+          creditCardNumber: ccNumber.replace(/\D/g, ''),
+          creditCardHolderName: ccName,
+          creditCardExpiryMonth: expiryMonth,
+          creditCardExpiryYear: expiryYear,
+          creditCardCcv: ccCvv,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      toast.success('Assinatura solicitada com sucesso!')
+      setIsCheckoutOpen(false)
+      loadData()
+    } catch (error: any) {
+      toast.error(error.response?.message || error.message || 'Erro ao processar assinatura.')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Meu Launchpad</h1>
-        <p className="text-muted-foreground mt-2 text-lg">
-          Acesse seus módulos ativos ou descubra novas soluções para o seu negócio.
+        <h1 className="text-3xl font-bold tracking-tight">Módulos Disponíveis</h1>
+        <p className="text-muted-foreground">
+          Explore e ative novas funcionalidades para sua conta.
         </p>
       </div>
 
-      <div className="space-y-6">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <CheckCircle2 className="h-6 w-6 text-primary" /> Módulos Ativos
-        </h2>
-        {myModules.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {myModules.map((mod) => (
-              <Card
-                key={mod.id}
-                className="flex flex-col border-primary/20 bg-card hover:shadow-md transition-shadow"
-              >
-                <CardHeader>
-                  <CardTitle className="text-xl">{mod.name}</CardTitle>
-                  <CardDescription>Acesso liberado</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="text-sm text-muted-foreground">
-                    Utilize este módulo para gerenciar as operações do seu negócio com eficiência.
-                  </p>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full gap-2 font-semibold" asChild>
-                    <a href={getLaunchUrl(mod)} target="_blank" rel="noopener noreferrer">
-                      Acessar <ExternalLink className="h-4 w-4" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {modules.map((mod) => {
+          const sub = subscriptions.find((s) => s.module_id === mod.id)
+          const isActive = sub?.status === 'active'
+
+          return (
+            <Card key={mod.id} className="flex flex-col">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Plug className="h-5 w-5 text-primary" />
+                  </div>
+                  {isActive ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-500/10 text-emerald-600 border-emerald-200"
+                    >
+                      Ativo
+                    </Badge>
+                  ) : sub ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-500/10 text-amber-600 border-amber-200"
+                    >
+                      {sub.status === 'trialing' ? 'Processando' : sub.status}
+                    </Badge>
+                  ) : null}
+                </div>
+                <CardTitle className="mt-4">{mod.name}</CardTitle>
+                <CardDescription>
+                  R$ {mod.base_price.toFixed(2).replace('.', ',')} / mês
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <p className="text-sm text-muted-foreground">
+                  Ative este módulo para acessar funcionalidades exclusivas do {mod.name}.
+                </p>
+              </CardContent>
+              <CardFooter>
+                {isActive ? (
+                  <Button variant="outline" className="w-full" asChild>
+                    <a href={mod.access_url || '#'} target="_blank" rel="noreferrer">
+                      Acessar Módulo
                     </a>
                   </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="border-dashed border-2 bg-muted/30">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground text-center">
-              <PackageSearch className="h-10 w-10 mb-4 opacity-50" />
-              <p className="text-lg font-medium text-foreground">Nenhum módulo ativo no momento.</p>
-              <p className="mt-1">Entre em contato para ativar novas soluções.</p>
-            </CardContent>
-          </Card>
-        )}
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => handleSubscribeClick(mod)}
+                    disabled={!!sub && sub.status !== 'canceled'}
+                  >
+                    {sub && sub.status !== 'canceled' ? 'Processando...' : 'Assinar Agora'}
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          )
+        })}
       </div>
 
-      <div className="space-y-6 pt-4 border-t">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Lock className="h-6 w-6 text-muted-foreground" /> Soluções Disponíveis
-        </h2>
-        {availableModules.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {availableModules.map((mod) => (
-              <Card
-                key={mod.id}
-                className="flex flex-col opacity-80 hover:opacity-100 transition-opacity bg-muted/10"
-              >
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl">{mod.name}</CardTitle>
-                    <Badge variant="secondary">Upgrade</Badge>
+      <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <form onSubmit={handleCheckout}>
+            <DialogHeader>
+              <DialogTitle>Assinar {selectedModule?.name}</DialogTitle>
+              <DialogDescription>
+                Valor: R$ {selectedModule?.base_price.toFixed(2).replace('.', ',')} / mês
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              <div className="space-y-3">
+                <Label>Forma de Pagamento</Label>
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={(val: any) => setPaymentMethod(val)}
+                  className="flex gap-6"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="CREDIT_CARD" id="cc" />
+                    <Label htmlFor="cc" className="flex items-center cursor-pointer gap-2">
+                      <CreditCard className="h-4 w-4" /> Cartão
+                    </Label>
                   </div>
-                  <CardDescription className="text-primary font-medium mt-1">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                      mod.base_price,
-                    )}{' '}
-                    / mês
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="text-sm text-muted-foreground">
-                    Entre em contato com nosso time comercial para ativar este módulo e expandir
-                    suas operações.
-                  </p>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" className="w-full text-muted-foreground" disabled>
-                    Contatar Comercial
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Todos os módulos disponíveis já estão ativos para você.
-          </p>
-        )}
-      </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="PIX" id="pix" />
+                    <Label htmlFor="pix" className="flex items-center cursor-pointer gap-2">
+                      <QrCode className="h-4 w-4" /> PIX
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="BOLETO" id="boleto" />
+                    <Label htmlFor="boleto" className="flex items-center cursor-pointer gap-2">
+                      <Receipt className="h-4 w-4" /> Boleto
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {paymentMethod === 'CREDIT_CARD' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-4">
+                  <div className="space-y-2">
+                    <Label>Número do Cartão</Label>
+                    <Input
+                      placeholder="0000 0000 0000 0000"
+                      value={ccNumber}
+                      onChange={(e) => setCcNumber(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nome Impresso no Cartão</Label>
+                    <Input
+                      placeholder="JOAO DA SILVA"
+                      value={ccName}
+                      onChange={(e) => setCcName(e.target.value.toUpperCase())}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Validade</Label>
+                      <Input
+                        placeholder="MM/AAAA"
+                        value={ccExpiry}
+                        onChange={(e) => setCcExpiry(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>CVV</Label>
+                      <Input
+                        placeholder="123"
+                        maxLength={4}
+                        value={ccCvv}
+                        onChange={(e) => setCcCvv(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCheckoutOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Processando...' : 'Confirmar Assinatura'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -102,6 +102,19 @@ export default function Auth() {
           throw new Error('A senha deve ter pelo menos 8 caracteres.')
         }
 
+        const cleanTaxId = taxId.replace(/\D/g, '')
+        if (personType === 'PF' && cleanTaxId.length !== 11) {
+          throw new Error('CPF inválido. Deve conter 11 dígitos.')
+        }
+        if (personType === 'PJ' && cleanTaxId.length !== 14) {
+          throw new Error('CNPJ inválido. Deve conter 14 dígitos.')
+        }
+
+        const cleanCep = postalCode.replace(/\D/g, '')
+        if (cleanCep.length !== 8) {
+          throw new Error('CEP inválido. Deve conter 8 dígitos.')
+        }
+
         try {
           await pb.collection('users').create({
             email,
@@ -111,7 +124,7 @@ export default function Auth() {
             role: 'User',
             person_type: personType,
             tax_id: taxId.replace(/\D/g, ''),
-            company_name: personType === 'PJ' ? companyName : '',
+            company_name: companyName,
             postal_code: postalCode,
             address,
             address_number: addressNumber,
@@ -208,18 +221,20 @@ export default function Auth() {
                       required={!isLogin}
                     />
                   </div>
-                  {personType === 'PJ' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="companyName">Razão Social / Nome da Empresa</Label>
-                      <Input
-                        id="companyName"
-                        placeholder="Sua Empresa LTDA"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        required={!isLogin && personType === 'PJ'}
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">
+                      {personType === 'PJ'
+                        ? 'Razão Social / Nome da Empresa'
+                        : 'Nome do Projeto / Empresa'}
+                    </Label>
+                    <Input
+                      id="companyName"
+                      placeholder={personType === 'PJ' ? 'Sua Empresa LTDA' : 'Meu Projeto'}
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      required={!isLogin}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="taxId">{personType === 'PJ' ? 'CNPJ' : 'CPF'}</Label>
                     <Input

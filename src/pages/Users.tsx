@@ -26,7 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Search, Plus, Settings2 } from 'lucide-react'
 import { getUsers, createUser, type User } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from 'sonner'
@@ -115,6 +116,7 @@ export default function Users() {
               <TableHead>Tipo/Documento</TableHead>
               <TableHead>Papel</TableHead>
               <TableHead>Criado em</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -148,6 +150,21 @@ export default function Users() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(user.created).toLocaleDateString('pt-BR')}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                      className="hover:bg-primary/10 hover:text-primary transition-colors"
+                    >
+                      <Link
+                        to={`/admin/assinaturas/${user.id}`}
+                        className="flex items-center gap-2"
+                      >
+                        <Settings2 className="h-4 w-4" /> Gerenciar
+                      </Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
