@@ -26,9 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Settings2, Trash2 } from 'lucide-react'
-import { getUsers, createUser, type User } from '@/services/api'
+import { Search, Plus, Settings2, Archive, ArchiveRestore } from 'lucide-react'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
@@ -36,15 +36,16 @@ import pb from '@/lib/pocketbase/client'
 
 export default function Users() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [formData, setFormData] = useState<any>({ role: 'User' })
   const [loading, setLoading] = useState(false)
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deactivateConfirmId, setDeactivateConfirmId] = useState<string | null>(null)
+  const [tab, setTab] = useState('active')
 
   const loadData = async () => {
     try {
-      const usrData = await getUsers()
+      const usrData = await pb.collection('users').getFullList({ sort: '-created' })
       setUsers(usrData)
     } catch (e) {
       console.error(e)
@@ -56,11 +57,16 @@ export default function Users() {
   }, [])
   useRealtime('users', loadData)
 
-  const filteredUsers = users.filter(
-    (u) =>
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch =
       (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.company_name || '').toLowerCase().includes(searchTerm.toLowerCase())
+
+    const isActive = u.active !== false
+    if (tab === 'active') return matchesSearch && isActive
+    return matchesSearch && !isActive
+  })
 
   const handleCreate = async () => {
     if (!formData.email || !formData.password || !formData.name) {
@@ -74,8 +80,8 @@ export default function Users() {
 
     setLoading(true)
     try {
-      const dataToSubmit = { ...formData }
-      await createUser(dataToSubmit)
+      const dataToSubmit = { ...formData, active: true }
+      await pb.collection('users').create(dataToSubmit)
       toast.success('Usuário criado com sucesso.')
       setIsOpen(false)
       setFormData({ role: 'User' })
@@ -84,6 +90,19 @@ export default function Users() {
       toast.error(getErrorMessage(e))
     }
     setLoading(false)
+  }
+
+  const handleToggleActive = async (id: string, makeActive: boolean) => {
+    try {
+      await pb.collection('users').update(id, { active: makeActive })
+      toast.success(
+        makeActive ? 'Usuário reativado com sucesso.' : 'Usuário desativado com sucesso.',
+      )
+      setDeactivateConfirmId(null)
+      loadData()
+    } catch (e) {
+      toast.error(getErrorMessage(e))
+    }
   }
 
   return (
@@ -99,7 +118,14 @@ export default function Users() {
       </div>
 
       <Card>
-        <div className="p-4 border-b">
+        <div className="p-4 border-b flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
+          <Tabs value={tab} onValueChange={setTab} className="w-[400px]">
+            <TabsList>
+              <TabsTrigger value="active">Ativos</TabsTrigger>
+              <TabsTrigger value="inactive">Inativos</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -155,34 +181,50 @@ export default function Users() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className="hover:bg-primary/10 hover:text-primary transition-colors"
-                      >
-                        <Link
-                          to={`/admin/assinaturas/${user.id}`}
-                          className="flex items-center gap-2"
+                      {tab === 'active' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className="hover:bg-primary/10 hover:text-primary transition-colors"
                         >
-                          <Settings2 className="h-4 w-4" /> Gerenciar
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeleteConfirmId(user.id)}
-                        className="text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                          <Link
+                            to={`/admin/assinaturas/${user.id}`}
+                            className="flex items-center gap-2"
+                          >
+                            <Settings2 className="h-4 w-4" /> Gerenciar
+                          </Link>
+                        </Button>
+                      )}
+
+                      {tab === 'active' ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeactivateConfirmId(user.id)}
+                          className="text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Desativar usuário"
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleActive(user.id, true)}
+                          className="text-green-600 hover:bg-green-600/10 transition-colors"
+                          title="Reativar usuário"
+                        >
+                          <ArchiveRestore className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
@@ -258,36 +300,29 @@ export default function Users() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+      <Dialog
+        open={!!deactivateConfirmId}
+        onOpenChange={(open) => !open && setDeactivateConfirmId(null)}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Excluir Usuário</DialogTitle>
+            <DialogTitle>Desativar Usuário</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
+              Tem certeza que deseja desativar este usuário? Ele perderá acesso ao sistema até ser
+              reativado.
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+            <Button variant="outline" onClick={() => setDeactivateConfirmId(null)}>
               Cancelar
             </Button>
             <Button
               variant="destructive"
-              onClick={async () => {
-                if (deleteConfirmId) {
-                  try {
-                    await pb.collection('users').delete(deleteConfirmId)
-                    toast.success('Usuário excluído com sucesso.')
-                    setDeleteConfirmId(null)
-                    loadData()
-                  } catch (e) {
-                    toast.error(getErrorMessage(e))
-                  }
-                }
-              }}
+              onClick={() => deactivateConfirmId && handleToggleActive(deactivateConfirmId, false)}
             >
-              Excluir
+              Desativar
             </Button>
           </DialogFooter>
         </DialogContent>

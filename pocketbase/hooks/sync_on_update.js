@@ -39,14 +39,33 @@ onRecordAfterUpdateSuccess((e) => {
         'Content-Type': 'application/json',
         'X-Hub-Secret': secret || '',
       },
-      body: JSON.stringify({
-        subscription_id: sub.id,
-        user_id: user.id,
-        company_name: user.getString('company_name'),
-        tax_id: user.getString('tax_id'),
-        status: sub.getString('status'),
-        module_slug: mod.getString('name'),
-      }),
+      body: JSON.stringify(
+        mod.getString('name').toUpperCase().includes('CRM')
+          ? {
+              action:
+                sub.getString('status') === 'active' || sub.getString('status') === 'trialing'
+                  ? 'provision'
+                  : 'update_status',
+              ...(sub.getString('status') === 'active' || sub.getString('status') === 'trialing'
+                ? {
+                    company_name: user.getString('company_name'),
+                    admin_email: user.getString('email'),
+                    admin_name: user.getString('name'),
+                  }
+                : {
+                    company_id: user.id,
+                    status: 'inactive',
+                  }),
+            }
+          : {
+              subscription_id: sub.id,
+              user_id: user.id,
+              company_name: user.getString('company_name'),
+              tax_id: user.getString('tax_id'),
+              status: sub.getString('status'),
+              module_slug: mod.getString('name'),
+            },
+      ),
       timeout: 10,
     })
 

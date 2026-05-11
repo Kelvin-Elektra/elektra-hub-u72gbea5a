@@ -18,7 +18,7 @@ onRecordAfterCreateSuccess((e) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'onboarding@resend.dev',
+        from: 'notificacao@elektrasolucoes.tech',
         to: email,
         subject: 'Bem-vindo! Confirme seu e-mail',
         html: `
