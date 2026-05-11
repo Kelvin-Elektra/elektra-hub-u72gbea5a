@@ -24,6 +24,13 @@ onRecordAfterUpdateSuccess((e) => {
   let status = 'success'
   let errorMessage = ''
 
+  let user
+  try {
+    user = $app.findRecordById('users', sub.getString('user_id'))
+  } catch (_) {
+    return e.next()
+  }
+
   try {
     const res = $http.send({
       url: endpoint,
@@ -33,7 +40,10 @@ onRecordAfterUpdateSuccess((e) => {
         'X-Hub-Secret': secret || '',
       },
       body: JSON.stringify({
-        company_id: sub.getString('company_id'),
+        subscription_id: sub.id,
+        user_id: user.id,
+        company_name: user.getString('company_name'),
+        tax_id: user.getString('tax_id'),
         status: sub.getString('status'),
         module_slug: mod.getString('name'),
       }),

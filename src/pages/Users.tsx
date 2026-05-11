@@ -27,11 +27,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Settings2 } from 'lucide-react'
+import { Search, Plus, Settings2, Trash2 } from 'lucide-react'
 import { getUsers, createUser, type User } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from 'sonner'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
+import pb from '@/lib/pocketbase/client'
 
 export default function Users() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -39,6 +40,7 @@ export default function Users() {
   const [isOpen, setIsOpen] = useState(false)
   const [formData, setFormData] = useState<any>({ role: 'User' })
   const [loading, setLoading] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const loadData = async () => {
     try {
@@ -152,19 +154,29 @@ export default function Users() {
                     {new Date(user.created).toLocaleDateString('pt-BR')}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                      className="hover:bg-primary/10 hover:text-primary transition-colors"
-                    >
-                      <Link
-                        to={`/admin/assinaturas/${user.id}`}
-                        className="flex items-center gap-2"
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                        className="hover:bg-primary/10 hover:text-primary transition-colors"
                       >
-                        <Settings2 className="h-4 w-4" /> Gerenciar
-                      </Link>
-                    </Button>
+                        <Link
+                          to={`/admin/assinaturas/${user.id}`}
+                          className="flex items-center gap-2"
+                        >
+                          <Settings2 className="h-4 w-4" /> Gerenciar
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteConfirmId(user.id)}
+                        className="text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -241,6 +253,41 @@ export default function Users() {
           <DialogFooter>
             <Button onClick={handleCreate} disabled={loading}>
               {loading ? 'Criando...' : 'Salvar Usuário'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Excluir Usuário</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (deleteConfirmId) {
+                  try {
+                    await pb.collection('users').delete(deleteConfirmId)
+                    toast.success('Usuário excluído com sucesso.')
+                    setDeleteConfirmId(null)
+                    loadData()
+                  } catch (e) {
+                    toast.error(getErrorMessage(e))
+                  }
+                }
+              }}
+            >
+              Excluir
             </Button>
           </DialogFooter>
         </DialogContent>

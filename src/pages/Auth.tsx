@@ -223,13 +223,11 @@ export default function Auth() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="companyName">
-                      {personType === 'PJ'
-                        ? 'Razão Social / Nome da Empresa'
-                        : 'Nome do Projeto / Empresa'}
+                      {personType === 'PJ' ? 'Razão Social / Nome da Empresa' : 'Nome da Empresa'}
                     </Label>
                     <Input
                       id="companyName"
-                      placeholder={personType === 'PJ' ? 'Sua Empresa LTDA' : 'Meu Projeto'}
+                      placeholder={personType === 'PJ' ? 'Sua Empresa LTDA' : 'Sua Empresa'}
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       required={!isLogin}

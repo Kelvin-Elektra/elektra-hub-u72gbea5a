@@ -1,21 +1,52 @@
+import { useEffect } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
-import { MailWarning } from 'lucide-react'
+import { MailWarning, RefreshCw } from 'lucide-react'
+import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Unverified() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login')
+    } else if (user.verified) {
+      navigate(user.role === 'Admin' ? '/admin' : '/cliente')
+    }
+  }, [user, navigate])
+
+  useRealtime('users', (e) => {
+    if (e.record.id === user?.id && e.record.verified) {
+      pb.collection('users')
+        .authRefresh()
+        .then(() => {
+          navigate(e.record.role === 'Admin' ? '/admin' : '/cliente')
+        })
+    }
+  })
 
   const handleSignOut = () => {
     signOut()
     navigate('/login')
   }
 
-  if (!user) {
-    navigate('/login')
-    return null
+  const handleRefresh = async () => {
+    if (user) {
+      try {
+        await pb.collection('users').authRefresh()
+        if (pb.authStore.record?.verified) {
+          navigate(pb.authStore.record.role === 'Admin' ? '/admin' : '/cliente')
+        }
+      } catch {
+        /* intentionally ignored */
+      }
+    }
   }
+
+  if (!user) return null
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -28,6 +59,9 @@ export default function Unverified() {
           de entrada e spam para ativar sua conta.
         </p>
         <div className="space-y-3 pt-4 border-t border-border">
+          <Button onClick={handleRefresh} className="w-full gap-2">
+            <RefreshCw className="h-4 w-4" /> Já confirmei
+          </Button>
           <Button variant="outline" onClick={handleSignOut} className="w-full">
             Sair e voltar ao Login
           </Button>

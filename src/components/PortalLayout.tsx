@@ -3,24 +3,33 @@ import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Plug, LogOut } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function PortalLayout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadLogo = useCallback(() => {
     pb.collection('settings')
       .getFirstListItem('')
       .then((settings) => {
         if (settings.logo) {
           setLogoUrl(pb.files.getURL(settings, settings.logo))
+        } else {
+          setLogoUrl(null)
         }
       })
-      .catch(() => {})
+      .catch(() => setLogoUrl(null))
   }, [])
+
+  useEffect(() => {
+    loadLogo()
+  }, [loadLogo])
+
+  useRealtime('settings', loadLogo)
 
   const handleSignOut = () => {
     signOut()

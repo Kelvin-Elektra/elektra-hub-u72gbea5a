@@ -1,11 +1,22 @@
 onRecordAfterCreateSuccess((e) => {
   const sub = e.record
+  if (sub.getString('status') !== 'active') {
+    return e.next()
+  }
+
   const moduleId = sub.getString('module_id')
   if (!moduleId) return e.next()
 
   let mod
   try {
     mod = $app.findRecordById('modules', moduleId)
+  } catch (_) {
+    return e.next()
+  }
+
+  let user
+  try {
+    user = $app.findRecordById('users', sub.getString('user_id'))
   } catch (_) {
     return e.next()
   }
@@ -28,7 +39,10 @@ onRecordAfterCreateSuccess((e) => {
         'X-Hub-Secret': secret || '',
       },
       body: JSON.stringify({
-        company_id: sub.getString('company_id'),
+        subscription_id: sub.id,
+        user_id: user.id,
+        company_name: user.getString('company_name'),
+        tax_id: user.getString('tax_id'),
         status: sub.getString('status'),
         module_slug: mod.getString('name'),
       }),
