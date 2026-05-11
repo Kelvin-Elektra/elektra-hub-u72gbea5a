@@ -63,7 +63,7 @@ export default function Users() {
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.company_name || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-    const isActive = u.active !== false
+    const isActive = u.active === true
     if (tab === 'active') return matchesSearch && isActive
     return matchesSearch && !isActive
   })

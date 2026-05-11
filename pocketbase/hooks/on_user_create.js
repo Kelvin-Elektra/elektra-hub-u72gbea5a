@@ -1,52 +1,43 @@
 onRecordAfterCreateSuccess((e) => {
-  const record = e.record
-  if (record.getBool('verified')) return e.next()
+  const user = e.record
+  const email = user.getString('email')
 
-  const email = record.getString('email')
+  if (!email) return e.next()
+
   const secret = $secrets.get('PB_SUPERUSER_TOKEN') || 'my-secret'
-  const token = $security.createJWT({ id: record.id }, secret, 3600 * 24)
+  const token = $security.createJWT({ id: user.id }, secret, 86400) // 24h
 
-  const verifyUrl = `https://master-hub-admin-cd135.goskip.app/verify?token=${token}`
+  const frontendUrl = 'https://hub.elektrasolucoes.tech'
+  const verifyLink = `${frontendUrl}/verify?token=${token}`
 
-  const resendApiKey = $secrets.get('RESEND_API_KEY')
-  if (resendApiKey) {
+  const resendKey = $secrets.get('RESEND_API_KEY')
+  if (!resendKey) {
+    $app.logger().error('RESEND_API_KEY not found')
+    return e.next()
+  }
+
+  try {
     const res = $http.send({
       url: 'https://api.resend.com/emails',
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${resendApiKey}`,
+        Authorization: `Bearer ${resendKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'notificacao@elektrasolucoes.tech',
+        from: 'Elektra HUB <notificacao@elektrasolucoes.tech>',
         to: email,
-        subject: 'Bem-vindo! Confirme seu e-mail',
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Bem-vindo ao Elektra HUB!</h2>
-            <p>Para ativar sua conta e acessar seus módulos, por favor clique no botão abaixo para confirmar seu e-mail:</p>
-            <a href="${verifyUrl}" style="display: inline-block; padding: 10px 20px; background-color: #0f172a; color: #ffffff; text-decoration: none; border-radius: 5px; margin: 20px 0;">Confirmar E-mail</a>
-            <p>Se você não solicitou este cadastro, pode ignorar este e-mail.</p>
-          </div>
-        `,
+        subject: 'Confirme seu email - Elektra HUB',
+        html: `<p>Olá,</p><p>Bem-vindo ao Elektra HUB! Clique no link abaixo para verificar seu email e ativar sua conta:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`,
       }),
+      timeout: 10,
     })
 
     if (res.statusCode >= 300) {
-      $app
-        .logger()
-        .error(
-          'Resend Email Error',
-          'email',
-          email,
-          'status',
-          res.statusCode,
-          'body',
-          res.json || res.body,
-        )
+      $app.logger().error('Failed to send verification email', 'status', res.statusCode)
     }
-  } else {
-    $app.logger().warn('RESEND_API_KEY is not set. Verification email not sent to ' + email)
+  } catch (err) {
+    $app.logger().error('Error sending verification email', 'error', String(err))
   }
 
   return e.next()

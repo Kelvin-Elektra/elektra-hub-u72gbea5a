@@ -114,7 +114,7 @@ export default function Index() {
                       {log.expand?.subscription_id?.expand?.module_id?.name || 'Desconhecido'}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Empresa: {log.expand?.subscription_id?.expand?.company_id?.name || '-'}
+                      Empresa: {log.expand?.subscription_id?.expand?.user_id?.company_name || '-'}
                     </p>
                     {log.error_message && (
                       <p className="text-xs text-destructive">{log.error_message}</p>
