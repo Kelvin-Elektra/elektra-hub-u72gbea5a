@@ -4,13 +4,13 @@ onRecordAfterCreateSuccess((e) => {
 
   const email = record.getString('email')
   const secret = $secrets.get('PB_SUPERUSER_TOKEN') || 'my-secret'
-  const token = $security.createJWT({ id: record.id }, secret, 3600 * 24) // 24 hours
+  const token = $security.createJWT({ id: record.id }, secret, 3600 * 24)
 
   const verifyUrl = `https://master-hub-admin-cd135.goskip.app/verify?token=${token}`
 
   const resendApiKey = $secrets.get('RESEND_API_KEY')
   if (resendApiKey) {
-    $http.send({
+    const res = $http.send({
       url: 'https://api.resend.com/emails',
       method: 'POST',
       headers: {
@@ -31,6 +31,20 @@ onRecordAfterCreateSuccess((e) => {
         `,
       }),
     })
+
+    if (res.statusCode >= 300) {
+      $app
+        .logger()
+        .error(
+          'Resend Email Error',
+          'email',
+          email,
+          'status',
+          res.statusCode,
+          'body',
+          res.json || res.body,
+        )
+    }
   } else {
     $app.logger().warn('RESEND_API_KEY is not set. Verification email not sent to ' + email)
   }

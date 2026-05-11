@@ -8,6 +8,19 @@ routerAdd('POST', '/backend/v1/asaas-webhook', (e) => {
   }
 
   const subId = payment.subscription
+  let status = ''
+
+  if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
+    status = 'active'
+  } else if (event === 'PAYMENT_OVERDUE') {
+    status = 'overdue'
+  } else if (
+    event === 'PAYMENT_DELETED' ||
+    event === 'PAYMENT_REFUNDED' ||
+    event === 'SUBSCRIPTION_DELETED'
+  ) {
+    status = 'canceled'
+  }
 
   try {
     const subRecord = $app.findFirstRecordByFilter(
@@ -16,15 +29,19 @@ routerAdd('POST', '/backend/v1/asaas-webhook', (e) => {
       { subId: subId },
     )
 
-    if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
-      subRecord.set('status', 'active')
-    } else if (event === 'PAYMENT_OVERDUE') {
-      subRecord.set('status', 'overdue')
-    } else if (event === 'PAYMENT_DELETED' || event === 'PAYMENT_REFUNDED') {
-      subRecord.set('status', 'canceled')
+    if (status) {
+      subRecord.set('status', status)
+      $app.save(subRecord)
     }
 
-    $app.save(subRecord)
+    try {
+      const syncLogsCol = $app.findCollectionByNameOrId('sync_logs')
+      const logRecord = new Record(syncLogsCol)
+      logRecord.set('subscription_id', subRecord.id)
+      logRecord.set('status', 'success')
+      logRecord.set('error_message', `Webhook event: ${event}`)
+      $app.save(logRecord)
+    } catch (_) {}
   } catch (_) {
     // Subscription not found in database, ignoring
   }

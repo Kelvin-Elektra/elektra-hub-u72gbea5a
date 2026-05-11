@@ -2,7 +2,9 @@ import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Plug, LogOut } from 'lucide-react'
+import { Plug, LogOut, LayoutGrid, UserCircle } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
+import { cn } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -77,6 +79,43 @@ export default function PortalLayout() {
           </Button>
         </div>
       </header>
+
+      <div className="border-b border-sidebar-border bg-sidebar/50">
+        <div className="max-w-6xl mx-auto px-6">
+          <nav className="flex space-x-6">
+            <NavLink
+              to="/cliente"
+              end
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
+                  isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+                )
+              }
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Módulos
+            </NavLink>
+            <NavLink
+              to="/cliente/meus-dados"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
+                  isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+                )
+              }
+            >
+              <UserCircle className="h-4 w-4" />
+              Meus Dados
+            </NavLink>
+          </nav>
+        </div>
+      </div>
+
       <main className="flex-1 overflow-auto p-6 md:p-8 w-full animate-fade-in bg-background">
         <div className="max-w-6xl mx-auto">
           <Outlet />

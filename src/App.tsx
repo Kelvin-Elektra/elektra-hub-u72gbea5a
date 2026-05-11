@@ -10,6 +10,7 @@ import Users from './pages/Users'
 import Settings from './pages/Settings'
 import Auth from './pages/Auth'
 import Portal from './pages/Portal'
+import MyData from './pages/MyData'
 import NotFound from './pages/NotFound'
 import VerifyEmail from './pages/VerifyEmail'
 import Unverified from './pages/Unverified'
@@ -71,6 +72,7 @@ const App = () => (
           <Route element={<RequireAuth allowedRoles={['User']} />}>
             <Route element={<PortalLayout />}>
               <Route path="/cliente" element={<Portal />} />
+              <Route path="/cliente/meus-dados" element={<MyData />} />
             </Route>
           </Route>
 

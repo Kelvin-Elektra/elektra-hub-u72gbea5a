@@ -33,17 +33,9 @@ export default function Unverified() {
     navigate('/login')
   }
 
-  const handleRefresh = async () => {
-    if (user) {
-      try {
-        await pb.collection('users').authRefresh()
-        if (pb.authStore.record?.verified) {
-          navigate(pb.authStore.record.role === 'Admin' ? '/admin' : '/cliente')
-        }
-      } catch {
-        /* intentionally ignored */
-      }
-    }
+  const handleRefresh = () => {
+    signOut()
+    navigate('/login')
   }
 
   if (!user) return null

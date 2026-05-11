@@ -20,19 +20,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { getModules, getUserSubscriptions, type Module, type Subscription } from '@/services/api'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
-import { Plug, CreditCard, Receipt, QrCode } from 'lucide-react'
+import { Plug, CreditCard, Receipt, QrCode, ShoppingCart, Trash2, ExternalLink } from 'lucide-react'
 
 export default function Portal() {
   const { user } = useAuth()
   const [modules, setModules] = useState<Module[]>([])
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+
+  const [cart, setCart] = useState<Module[]>([])
+  const [isCartOpen, setIsCartOpen] = useState(false)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
-  const [selectedModule, setSelectedModule] = useState<Module | null>(null)
 
   const [paymentMethod, setPaymentMethod] = useState<'CREDIT_CARD' | 'PIX' | 'BOLETO'>(
     'CREDIT_CARD',
@@ -60,14 +63,20 @@ export default function Portal() {
   useRealtime('subscriptions', loadData)
   useRealtime('modules', loadData)
 
-  const handleSubscribeClick = (mod: Module) => {
-    setSelectedModule(mod)
-    setIsCheckoutOpen(true)
+  const addToCart = (mod: Module) => {
+    if (!cart.find((m) => m.id === mod.id)) {
+      setCart([...cart, mod])
+      toast.success(`${mod.name} adicionado ao carrinho`)
+    }
+  }
+
+  const removeFromCart = (modId: string) => {
+    setCart(cart.filter((m) => m.id !== modId))
   }
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedModule) return
+    if (cart.length === 0) return
     setLoading(true)
 
     try {
@@ -81,22 +90,25 @@ export default function Portal() {
         if (expiryYear.length === 2) expiryYear = '20' + expiryYear
       }
 
-      await pb.send('/backend/v1/checkout', {
-        method: 'POST',
-        body: JSON.stringify({
-          moduleId: selectedModule.id,
-          paymentMethod,
-          creditCardNumber: ccNumber.replace(/\D/g, ''),
-          creditCardHolderName: ccName,
-          creditCardExpiryMonth: expiryMonth,
-          creditCardExpiryYear: expiryYear,
-          creditCardCcv: ccCvv,
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
+      for (const item of cart) {
+        await pb.send('/backend/v1/checkout', {
+          method: 'POST',
+          body: JSON.stringify({
+            moduleId: item.id,
+            paymentMethod,
+            creditCardNumber: ccNumber.replace(/\D/g, ''),
+            creditCardHolderName: ccName,
+            creditCardExpiryMonth: expiryMonth,
+            creditCardExpiryYear: expiryYear,
+            creditCardCcv: ccCvv,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
 
-      toast.success('Assinatura solicitada com sucesso!')
+      toast.success('Assinatura(s) processada(s) com sucesso!')
       setIsCheckoutOpen(false)
+      setCart([])
       loadData()
     } catch (error: any) {
       toast.error(error.response?.message || error.message || 'Erro ao processar assinatura.')
@@ -105,8 +117,19 @@ export default function Portal() {
     }
   }
 
+  const handleAccess = async (mod: Module) => {
+    try {
+      const res = await pb.send('/backend/v1/sso-token', { method: 'POST' })
+      const url = new URL(mod.access_url || 'https://example.com')
+      url.searchParams.set('sso_token', res.token)
+      window.open(url.toString(), '_blank')
+    } catch (err) {
+      toast.error('Erro ao gerar token de acesso.')
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative pb-20">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Módulos Disponíveis</h1>
         <p className="text-muted-foreground">
@@ -118,6 +141,7 @@ export default function Portal() {
         {modules.map((mod) => {
           const sub = subscriptions.find((s) => s.module_id === mod.id)
           const isActive = sub?.status === 'active'
+          const inCart = cart.some((m) => m.id === mod.id)
 
           return (
             <Card key={mod.id} className="flex flex-col">
@@ -154,18 +178,21 @@ export default function Portal() {
               </CardContent>
               <CardFooter>
                 {isActive ? (
-                  <Button variant="outline" className="w-full" asChild>
-                    <a href={mod.access_url || '#'} target="_blank" rel="noreferrer">
-                      Acessar Módulo
-                    </a>
+                  <Button variant="outline" className="w-full" onClick={() => handleAccess(mod)}>
+                    Acessar Módulo <ExternalLink className="h-4 w-4 ml-2" />
                   </Button>
                 ) : (
                   <Button
                     className="w-full"
-                    onClick={() => handleSubscribeClick(mod)}
+                    variant={inCart ? 'secondary' : 'default'}
+                    onClick={() => (inCart ? removeFromCart(mod.id) : addToCart(mod))}
                     disabled={!!sub && sub.status !== 'canceled'}
                   >
-                    {sub && sub.status !== 'canceled' ? 'Processando...' : 'Assinar Agora'}
+                    {sub && sub.status !== 'canceled'
+                      ? 'Processando...'
+                      : inCart
+                        ? 'Remover do Carrinho'
+                        : 'Adicionar ao Carrinho'}
                   </Button>
                 )}
               </CardFooter>
@@ -174,13 +201,85 @@ export default function Portal() {
         })}
       </div>
 
+      <div className="fixed bottom-8 right-8 z-40">
+        <Button
+          className="rounded-full shadow-elevation h-16 w-16 relative"
+          onClick={() => setIsCartOpen(true)}
+        >
+          <ShoppingCart className="h-6 w-6" />
+          {cart.length > 0 && (
+            <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-in zoom-in">
+              {cart.length}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+        <SheetContent className="flex flex-col">
+          <SheetHeader>
+            <SheetTitle>Seu Carrinho</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto py-6 space-y-4">
+            {cart.map((item) => (
+              <div key={item.id} className="flex justify-between items-center border-b pb-4">
+                <div>
+                  <p className="font-medium">{item.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    R$ {item.base_price.toFixed(2).replace('.', ',')} / mês
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            {cart.length === 0 && (
+              <div className="text-center text-muted-foreground pt-12 flex flex-col items-center">
+                <ShoppingCart className="h-12 w-12 mb-4 opacity-20" />
+                <p>Seu carrinho está vazio.</p>
+              </div>
+            )}
+          </div>
+          {cart.length > 0 && (
+            <div className="border-t pt-6 mt-auto">
+              <div className="flex justify-between font-bold text-lg mb-6">
+                <span>Total:</span>
+                <span>
+                  R${' '}
+                  {cart
+                    .reduce((acc, item) => acc + item.base_price, 0)
+                    .toFixed(2)
+                    .replace('.', ',')}
+                </span>
+              </div>
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => {
+                  setIsCartOpen(false)
+                  setIsCheckoutOpen(true)
+                }}
+              >
+                Finalizar Compra
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
       <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <form onSubmit={handleCheckout}>
             <DialogHeader>
-              <DialogTitle>Assinar {selectedModule?.name}</DialogTitle>
+              <DialogTitle>Finalizar Assinatura</DialogTitle>
               <DialogDescription>
-                Valor: R$ {selectedModule?.base_price.toFixed(2).replace('.', ',')} / mês
+                Você está assinando {cart.length} módulo(s) por R${' '}
+                {cart
+                  .reduce((acc, item) => acc + item.base_price, 0)
+                  .toFixed(2)
+                  .replace('.', ',')}{' '}
+                / mês
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
