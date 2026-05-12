@@ -43,30 +43,12 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
     return e.unauthorizedError('User not found')
   }
 
-  const duration = 7 * 24 * 60 * 60
-  let crmToken
-  try {
-    crmToken = $security.createJWT(
-      { id: user.id, type: 'auth', collectionId: user.collection().id },
-      $app.settings().recordAuthToken.secret,
-      duration,
-    )
-  } catch (err) {
-    $app.logger().error('SSO verify failed: CRM token generation error', 'error', String(err))
-    return e.internalServerError('Failed to generate session')
+  if (user.getBool('active') === false) {
+    $app.logger().warn('SSO verify failed: User is inactive', 'userId', user.id)
+    return e.forbiddenError('Conta inativa')
   }
 
   $app.logger().info('SSO token verified successfully', 'userId', user.id)
 
-  return e.json(200, {
-    valid: true,
-    token: crmToken,
-    user: {
-      id: user.id,
-      email: user.getString('email'),
-      name: user.getString('name'),
-      company_name: user.getString('company_name'),
-      tax_id: user.getString('tax_id'),
-    },
-  })
+  return $apis.recordAuthResponse($app, e, user)
 })

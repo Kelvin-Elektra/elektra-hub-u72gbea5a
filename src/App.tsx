@@ -10,6 +10,7 @@ import Users from './pages/Users'
 import ModulesAdmin from './pages/ModulesAdmin'
 import Settings from './pages/Settings'
 import Auth from './pages/Auth'
+import SSO from './pages/SSO'
 import Portal from './pages/Portal'
 import MyData from './pages/MyData'
 import NotFound from './pages/NotFound'
@@ -66,6 +67,7 @@ const App = () => (
           <Route path="/login" element={<Auth />} />
           <Route path="/register" element={<Auth />} />
           <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/sso" element={<SSO />} />
 
           <Route element={<RequireAuth />}>
             <Route path="/unverified" element={<Unverified />} />
