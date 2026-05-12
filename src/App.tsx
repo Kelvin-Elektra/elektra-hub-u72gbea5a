@@ -17,6 +17,7 @@ import VerifyEmail from './pages/VerifyEmail'
 import Unverified from './pages/Unverified'
 import Layout from './components/Layout'
 import PortalLayout from './components/PortalLayout'
+import PortalSubscriptions from './pages/PortalSubscriptions'
 
 const RequireAuth = ({ allowedRoles }: { allowedRoles?: string[] }) => {
   const { user, loading } = useAuth()
@@ -73,6 +74,7 @@ const App = () => (
           <Route element={<RequireAuth allowedRoles={['User']} />}>
             <Route element={<PortalLayout />}>
               <Route path="/cliente" element={<Portal />} />
+              <Route path="/cliente/assinaturas" element={<PortalSubscriptions />} />
               <Route path="/cliente/meus-dados" element={<MyData />} />
             </Route>
           </Route>

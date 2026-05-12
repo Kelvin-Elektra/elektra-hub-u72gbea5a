@@ -1,8 +1,7 @@
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Plug, LogOut, LayoutGrid, UserCircle } from 'lucide-react'
+import { Plug, LogOut, LayoutGrid, UserCircle, FileText } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
@@ -55,13 +54,7 @@ export default function PortalLayout() {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3 mr-4">
-            <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-              <AvatarImage
-                src={`https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`}
-              />
-              <AvatarFallback className="text-foreground">{user?.name?.[0] || 'U'}</AvatarFallback>
-            </Avatar>
-            <div className="hidden md:flex flex-col">
+            <div className="hidden md:flex flex-col text-right">
               <span className="text-sm font-medium leading-none text-sidebar-foreground">
                 {user?.name || 'User'}
               </span>
@@ -97,6 +90,20 @@ export default function PortalLayout() {
             >
               <LayoutGrid className="h-4 w-4" />
               Módulos
+            </NavLink>
+            <NavLink
+              to="/cliente/assinaturas"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
+                  isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+                )
+              }
+            >
+              <FileText className="h-4 w-4" />
+              Assinaturas
             </NavLink>
             <NavLink
               to="/cliente/meus-dados"

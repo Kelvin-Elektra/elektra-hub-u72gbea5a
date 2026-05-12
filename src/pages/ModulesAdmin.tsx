@@ -173,7 +173,7 @@ export default function ModulesAdmin() {
                   </div>
                 </div>
                 <CardTitle className="mt-2">{mod.name}</CardTitle>
-                <CardDescription>R$ {mod.base_price.toFixed(2)} / mês</CardDescription>
+                <CardDescription>R$ {(mod.base_price || 0).toFixed(2)} / mês</CardDescription>
               </CardHeader>
               <CardContent className="flex-1">
                 <p className="text-sm text-muted-foreground line-clamp-2">
@@ -181,8 +181,20 @@ export default function ModulesAdmin() {
                 </p>
                 <div className="mt-2 flex items-center gap-2 text-sm">
                   <span className="font-semibold">Status:</span>
-                  <span className={mod.status === 'active' ? 'text-emerald-600' : 'text-amber-600'}>
-                    {mod.status}
+                  <span
+                    className={
+                      mod.status === 'active'
+                        ? 'text-emerald-600'
+                        : mod.status === 'maintenance'
+                          ? 'text-amber-600'
+                          : 'text-destructive'
+                    }
+                  >
+                    {mod.status === 'active'
+                      ? 'Ativo'
+                      : mod.status === 'maintenance'
+                        ? 'Em Manutenção'
+                        : 'Descontinuado'}
                   </span>
                 </div>
               </CardContent>
