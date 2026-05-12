@@ -15,7 +15,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Plug } from 'lucide-react'
-import { getErrorMessage } from '@/lib/pocketbase/errors'
+import { getErrorMessage, extractFieldErrors } from '@/lib/pocketbase/errors'
 import { toast } from 'sonner'
 
 export default function Auth() {
@@ -41,6 +41,7 @@ export default function Auth() {
   const [state, setState] = useState('')
 
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
@@ -92,6 +93,7 @@ export default function Auth() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setFieldErrors({})
 
     try {
       if (isLogin) {
@@ -149,7 +151,13 @@ export default function Auth() {
         if (signInError) throw signInError
       }
     } catch (err: any) {
-      setError(getErrorMessage(err))
+      const extractedErrors = extractFieldErrors(err)
+      if (Object.keys(extractedErrors).length > 0) {
+        setFieldErrors(extractedErrors)
+        setError('Por favor, verifique os campos destacados.')
+      } else {
+        setError(getErrorMessage(err))
+      }
     } finally {
       setLoading(false)
     }
@@ -158,6 +166,7 @@ export default function Auth() {
   const toggleMode = () => {
     setIsLogin(!isLogin)
     setError('')
+    setFieldErrors({})
   }
 
   return (
@@ -219,7 +228,11 @@ export default function Auth() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required={!isLogin}
+                      className={fieldErrors.name ? 'border-destructive' : ''}
                     />
+                    {fieldErrors.name && (
+                      <p className="text-xs text-destructive">{fieldErrors.name}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="companyName">Nome da Empresa</Label>
@@ -229,7 +242,11 @@ export default function Auth() {
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       required={!isLogin}
+                      className={fieldErrors.company_name ? 'border-destructive' : ''}
                     />
+                    {fieldErrors.company_name && (
+                      <p className="text-xs text-destructive">{fieldErrors.company_name}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="taxId">{personType === 'PJ' ? 'CNPJ' : 'CPF'}</Label>
@@ -239,7 +256,11 @@ export default function Auth() {
                       value={taxId}
                       onChange={(e) => setTaxId(formatTaxId(e.target.value))}
                       required={!isLogin}
+                      className={fieldErrors.tax_id ? 'border-destructive' : ''}
                     />
+                    {fieldErrors.tax_id && (
+                      <p className="text-xs text-destructive">{fieldErrors.tax_id}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
@@ -250,7 +271,11 @@ export default function Auth() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      className={fieldErrors.email ? 'border-destructive' : ''}
                     />
+                    {fieldErrors.email && (
+                      <p className="text-xs text-destructive">{fieldErrors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Senha</Label>
@@ -262,7 +287,11 @@ export default function Auth() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={8}
+                      className={fieldErrors.password ? 'border-destructive' : ''}
                     />
+                    {fieldErrors.password && (
+                      <p className="text-xs text-destructive">{fieldErrors.password}</p>
+                    )}
                   </div>
                 </div>
 
@@ -278,7 +307,11 @@ export default function Auth() {
                         onChange={(e) => handleCepChange(e.target.value)}
                         required={!isLogin}
                         maxLength={9}
+                        className={fieldErrors.postal_code ? 'border-destructive' : ''}
                       />
+                      {fieldErrors.postal_code && (
+                        <p className="text-xs text-destructive">{fieldErrors.postal_code}</p>
+                      )}
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="address">Logradouro</Label>
@@ -288,7 +321,11 @@ export default function Auth() {
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         required={!isLogin}
+                        className={fieldErrors.address ? 'border-destructive' : ''}
                       />
+                      {fieldErrors.address && (
+                        <p className="text-xs text-destructive">{fieldErrors.address}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="addressNumber">Número</Label>
@@ -298,7 +335,11 @@ export default function Auth() {
                         value={addressNumber}
                         onChange={(e) => setAddressNumber(e.target.value)}
                         required={!isLogin}
+                        className={fieldErrors.address_number ? 'border-destructive' : ''}
                       />
+                      {fieldErrors.address_number && (
+                        <p className="text-xs text-destructive">{fieldErrors.address_number}</p>
+                      )}
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="complement">Complemento</Label>
@@ -307,7 +348,11 @@ export default function Auth() {
                         placeholder="Apto 45"
                         value={complement}
                         onChange={(e) => setComplement(e.target.value)}
+                        className={fieldErrors.complement ? 'border-destructive' : ''}
                       />
+                      {fieldErrors.complement && (
+                        <p className="text-xs text-destructive">{fieldErrors.complement}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="neighborhood">Bairro</Label>
@@ -317,7 +362,11 @@ export default function Auth() {
                         value={neighborhood}
                         onChange={(e) => setNeighborhood(e.target.value)}
                         required={!isLogin}
+                        className={fieldErrors.neighborhood ? 'border-destructive' : ''}
                       />
+                      {fieldErrors.neighborhood && (
+                        <p className="text-xs text-destructive">{fieldErrors.neighborhood}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="city">Cidade</Label>
@@ -327,7 +376,11 @@ export default function Auth() {
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         required={!isLogin}
+                        className={fieldErrors.city ? 'border-destructive' : ''}
                       />
+                      {fieldErrors.city && (
+                        <p className="text-xs text-destructive">{fieldErrors.city}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="state">Estado (UF)</Label>
@@ -338,7 +391,11 @@ export default function Auth() {
                         onChange={(e) => setState(e.target.value)}
                         required={!isLogin}
                         maxLength={2}
+                        className={fieldErrors.state ? 'border-destructive' : ''}
                       />
+                      {fieldErrors.state && (
+                        <p className="text-xs text-destructive">{fieldErrors.state}</p>
+                      )}
                     </div>
                   </div>
                 </div>

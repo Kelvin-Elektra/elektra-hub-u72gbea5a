@@ -1,4 +1,4 @@
-onRecordCreate((e) => {
+onRecordCreateRequest((e) => {
   const record = e.record
 
   // Set company_id if empty
