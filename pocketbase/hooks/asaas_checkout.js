@@ -80,13 +80,18 @@ routerAdd(
 
     const formattedNextDueDate = nextDueDate.toISOString().split('T')[0]
 
+    let description = 'Assinatura do módulo: ' + module.getString('name')
+    if (appliedCoupon) {
+      description += ' | Cupom: ' + appliedCoupon.getString('code')
+    }
+
     const payload = {
       customer: customerId,
       billingType: body.paymentMethod,
       value: modulePrice,
       nextDueDate: formattedNextDueDate,
       cycle: 'MONTHLY',
-      description: 'Assinatura do módulo: ' + module.getString('name'),
+      description: description,
     }
 
     if (body.paymentMethod === 'CREDIT_CARD') {
@@ -126,17 +131,12 @@ routerAdd(
     subRecord.set('user_id', user.id)
     subRecord.set('module_id', module.id)
     subRecord.set('status', body.paymentMethod === 'CREDIT_CARD' ? 'active' : 'trialing')
-    subRecord.set('price', module.getFloat('base_price'))
+    subRecord.set('price', modulePrice)
     subRecord.set('asaas_customer_id', customerId)
     subRecord.set('asaas_subscription_id', subRes.json.id)
     subRecord.set('next_billing_date', nextDueDate.toISOString())
 
     $app.save(subRecord)
-
-    if (appliedCoupon) {
-      appliedCoupon.set('current_uses', appliedCoupon.getInt('current_uses') + 1)
-      $app.save(appliedCoupon)
-    }
 
     return e.json(200, { success: true, subscription: subRecord.id })
   },

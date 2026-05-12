@@ -45,7 +45,9 @@ export default function Portal() {
   const [ccExpiry, setCcExpiry] = useState('')
   const [ccCvv, setCcCvv] = useState('')
   const [loading, setLoading] = useState(false)
-  const [coupon, setCoupon] = useState('')
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
+  const [couponError, setCouponError] = useState('')
 
   const loadData = async () => {
     if (!user) return
@@ -75,6 +77,52 @@ export default function Portal() {
     setCart(cart.filter((m) => m.id !== modId))
   }
 
+  const handleApplyCoupon = async () => {
+    setCouponError('')
+    if (!couponCode.trim()) return
+
+    try {
+      setLoading(true)
+      const records = await pb.collection('coupons').getList(1, 1, {
+        filter: `code = "${couponCode.trim()}" && active = true`,
+      })
+
+      if (records.items.length === 0) {
+        setCouponError('Cupom inválido ou inativo.')
+        setAppliedCoupon(null)
+        return
+      }
+
+      const coupon = records.items[0]
+      if (coupon.max_uses > 0 && coupon.current_uses >= coupon.max_uses) {
+        setCouponError('Cupom esgotado.')
+        setAppliedCoupon(null)
+        return
+      }
+
+      setAppliedCoupon(coupon)
+      toast.success('Cupom aplicado com sucesso!')
+    } catch (error) {
+      setCouponError('Erro ao validar cupom.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getDiscountedPrice = (basePrice: number) => {
+    if (!appliedCoupon) return basePrice
+    if (appliedCoupon.type === 'percentage') {
+      return Math.max(0, basePrice * (1 - appliedCoupon.value / 100))
+    }
+    if (appliedCoupon.type === 'fixed_amount') {
+      return Math.max(0, basePrice - appliedCoupon.value)
+    }
+    return basePrice
+  }
+
+  const subtotal = cart.reduce((acc, item) => acc + item.base_price, 0)
+  const total = cart.reduce((acc, item) => acc + getDiscountedPrice(item.base_price), 0)
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
     if (cart.length === 0) return
@@ -102,7 +150,7 @@ export default function Portal() {
             creditCardExpiryMonth: expiryMonth,
             creditCardExpiryYear: expiryYear,
             creditCardCcv: ccCvv,
-            coupon: coupon.trim() || undefined,
+            coupon: appliedCoupon?.code || undefined,
           }),
           headers: { 'Content-Type': 'application/json' },
         })
@@ -111,7 +159,8 @@ export default function Portal() {
       toast.success('Assinatura(s) processada(s) com sucesso!')
       setIsCheckoutOpen(false)
       setCart([])
-      setCoupon('')
+      setCouponCode('')
+      setAppliedCoupon(null)
       loadData()
     } catch (error: any) {
       toast.error(error.response?.message || error.message || 'Erro ao processar assinatura.')
@@ -124,7 +173,7 @@ export default function Portal() {
     try {
       const res = await pb.send('/backend/v1/sso-token', { method: 'POST' })
       const url = new URL(mod.access_url || 'https://example.com')
-      url.searchParams.set('token', res.token)
+      url.searchParams.set('sso_token', res.token)
       window.open(url.toString(), '_blank')
     } catch (err) {
       toast.error('Erro ao gerar token de acesso.')
@@ -300,13 +349,34 @@ export default function Portal() {
           <form onSubmit={handleCheckout}>
             <DialogHeader>
               <DialogTitle>Finalizar Assinatura</DialogTitle>
-              <DialogDescription>
-                Você está assinando {cart.length} módulo(s) por R${' '}
-                {cart
-                  .reduce((acc, item) => acc + item.base_price, 0)
-                  .toFixed(2)
-                  .replace('.', ',')}{' '}
-                / mês
+              <DialogDescription className="flex flex-col gap-1 mt-1">
+                <span>Você está assinando {cart.length} módulo(s).</span>
+                {appliedCoupon && appliedCoupon.type !== 'free_months' && (
+                  <span>
+                    De{' '}
+                    <span className="line-through">R$ {subtotal.toFixed(2).replace('.', ',')}</span>{' '}
+                    por{' '}
+                    <strong className="text-foreground">
+                      R$ {total.toFixed(2).replace('.', ',')}
+                    </strong>{' '}
+                    / mês
+                  </span>
+                )}
+                {!appliedCoupon && (
+                  <span>
+                    Total:{' '}
+                    <strong className="text-foreground">
+                      R$ {subtotal.toFixed(2).replace('.', ',')}
+                    </strong>{' '}
+                    / mês
+                  </span>
+                )}
+                {appliedCoupon && appliedCoupon.type === 'free_months' && (
+                  <span className="text-emerald-600 font-medium">
+                    {appliedCoupon.free_months} mês(es) grátis aplicado(s)! O primeiro pagamento
+                    será adiado.
+                  </span>
+                )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
@@ -384,11 +454,40 @@ export default function Portal() {
 
               <div className="space-y-2 pt-4 border-t">
                 <Label>Cupom de Desconto (Opcional)</Label>
-                <Input
-                  placeholder="EX: PROMO100"
-                  value={coupon}
-                  onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="EX: PROMO100"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase())
+                      if (appliedCoupon && e.target.value.toUpperCase() !== appliedCoupon.code) {
+                        setAppliedCoupon(null)
+                        setCouponError('')
+                      }
+                    }}
+                    disabled={loading}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleApplyCoupon}
+                    disabled={!couponCode || loading || appliedCoupon?.code === couponCode}
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+                {couponError && <p className="text-sm text-destructive">{couponError}</p>}
+                {appliedCoupon && (
+                  <p className="text-sm text-emerald-600 font-medium">
+                    Cupom {appliedCoupon.code} aplicado!
+                    {appliedCoupon.type === 'percentage' &&
+                      ` (${appliedCoupon.value}% de desconto)`}
+                    {appliedCoupon.type === 'fixed_amount' &&
+                      ` (- R$ ${appliedCoupon.value.toFixed(2).replace('.', ',')})`}
+                    {appliedCoupon.type === 'free_months' &&
+                      ` (${appliedCoupon.free_months} mês(es) grátis)`}
+                  </p>
+                )}
               </div>
             </div>
             <DialogFooter>

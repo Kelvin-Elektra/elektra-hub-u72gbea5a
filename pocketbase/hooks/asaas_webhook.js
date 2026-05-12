@@ -34,6 +34,41 @@ routerAdd('POST', '/backend/v1/asaas-webhook', (e) => {
       $app.save(subRecord)
     }
 
+    if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
+      const desc = payment.description || ''
+      const match = desc.match(/\|\s*Cupom:\s*([A-Za-z0-9_-]+)/)
+
+      if (match && match[1]) {
+        try {
+          const couponCode = match[1]
+
+          const existingLogs = $app.findRecordsByFilter(
+            'sync_logs',
+            `subscription_id = "${subRecord.id}" && error_message ~ "Webhook event: PAYMENT_RECEIVED"`,
+            '',
+            1,
+            0,
+          )
+
+          const existingConfirmedLogs = $app.findRecordsByFilter(
+            'sync_logs',
+            `subscription_id = "${subRecord.id}" && error_message ~ "Webhook event: PAYMENT_CONFIRMED"`,
+            '',
+            1,
+            0,
+          )
+
+          if (existingLogs.length === 0 && existingConfirmedLogs.length === 0) {
+            const couponRecord = $app.findFirstRecordByData('coupons', 'code', couponCode)
+            couponRecord.set('current_uses', couponRecord.getInt('current_uses') + 1)
+            $app.save(couponRecord)
+          }
+        } catch (err) {
+          $app.logger().error('Failed to increment coupon', 'error', err.message)
+        }
+      }
+    }
+
     try {
       const syncLogsCol = $app.findCollectionByNameOrId('sync_logs')
       const logRecord = new Record(syncLogsCol)
