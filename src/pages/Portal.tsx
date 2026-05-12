@@ -21,7 +21,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { getModules, getUserSubscriptions, type Module, type Subscription } from '@/services/api'
+import {
+  getModules,
+  getUserSubscriptions,
+  getEmployeeAccess,
+  type Module,
+  type Subscription,
+} from '@/services/api'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from 'sonner'
@@ -52,9 +58,30 @@ export default function Portal() {
   const loadData = async () => {
     if (!user) return
     try {
-      const [mods, subs] = await Promise.all([getModules(), getUserSubscriptions(user.id)])
+      const isOwner = user.is_owner !== false
+
+      const [mods, subs, access] = await Promise.all([
+        getModules(),
+        isOwner ? getUserSubscriptions(user.id) : Promise.resolve([]),
+        !isOwner ? getEmployeeAccess(user.id) : Promise.resolve([]),
+      ])
+
       setModules(mods.filter((m) => m.status === 'active'))
-      setSubscriptions(subs)
+
+      if (isOwner) {
+        setSubscriptions(subs)
+      } else {
+        // Map employee_access to mimic active subscriptions for the UI
+        const mappedSubs = access.map((a) => ({
+          id: a.id,
+          module_id: a.module_id,
+          user_id: user.id,
+          status: 'active',
+          price: 0,
+          expand: a.expand,
+        })) as Subscription[]
+        setSubscriptions(mappedSubs)
+      }
     } catch (error) {
       console.error(error)
     }
@@ -65,6 +92,7 @@ export default function Portal() {
   }, [user])
   useRealtime('subscriptions', loadData)
   useRealtime('modules', loadData)
+  useRealtime('employee_access', loadData)
 
   const addToCart = (mod: Module) => {
     if (!cart.find((m) => m.id === mod.id)) {
@@ -257,7 +285,7 @@ export default function Portal() {
                   <Button variant="outline" className="w-full" onClick={() => handleAccess(mod)}>
                     Acessar Módulo <ExternalLink className="h-4 w-4 ml-2" />
                   </Button>
-                ) : (
+                ) : user.is_owner !== false ? (
                   <Button
                     className="w-full"
                     variant={inCart ? 'secondary' : 'default'}
@@ -270,6 +298,10 @@ export default function Portal() {
                         ? 'Remover do Carrinho'
                         : 'Adicionar ao Carrinho'}
                   </Button>
+                ) : (
+                  <div className="w-full text-center text-sm text-muted-foreground py-2 border rounded-md bg-muted/50">
+                    Sem acesso
+                  </div>
                 )}
               </CardFooter>
             </Card>

@@ -1,7 +1,7 @@
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
-import { Plug, LogOut, LayoutGrid, UserCircle, FileText } from 'lucide-react'
+import { Plug, LogOut, LayoutGrid, UserCircle, FileText, Users } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
@@ -105,6 +105,22 @@ export default function PortalLayout() {
               <FileText className="h-4 w-4" />
               Assinaturas
             </NavLink>
+            {user?.is_owner !== false && (
+              <NavLink
+                to="/cliente/equipe"
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
+                    isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+                  )
+                }
+              >
+                <Users className="h-4 w-4" />
+                Equipe
+              </NavLink>
+            )}
             <NavLink
               to="/cliente/meus-dados"
               className={({ isActive }) =>

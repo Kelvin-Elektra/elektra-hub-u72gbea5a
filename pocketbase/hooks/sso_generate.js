@@ -19,8 +19,10 @@ routerAdd(
       const token = $security.createJWT(
         {
           id: user.id,
-          user_hub_id: user.id,
-          company_hub_id: user.getString('company_id'),
+          hub_user_id: user.id,
+          hub_company_id: user.getString('company_id'),
+          user_hub_id: user.id, // keeping for backward compatibility
+          company_hub_id: user.getString('company_id'), // keeping for backward compatibility
           email: user.getString('email'),
           role: user.getString('role'),
         },

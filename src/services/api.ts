@@ -76,3 +76,11 @@ export const getSettings = async (): Promise<any> => {
 export const updateSettings = async (id: string, data: any): Promise<any> => {
   return await pb.collection('settings').update(id, data)
 }
+
+export const getEmployeeAccess = async (userId: string): Promise<any[]> => {
+  const records = await pb.collection('employee_access').getFullList({
+    filter: `employee_id = "${userId}"`,
+    expand: 'module_id',
+  })
+  return records
+}

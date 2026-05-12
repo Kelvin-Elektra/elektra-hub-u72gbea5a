@@ -62,6 +62,8 @@ onRecordAfterCreateSuccess((e) => {
   } else {
     payload = {
       subscription_id: sub.id,
+      hub_user_id: user.id,
+      hub_company_id: user.getString('company_id'),
       user_id: user.id,
       company_name: user.getString('company_name'),
       tax_id: user.getString('tax_id'),

@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-05-12T21:45:26.187Z",
+  "generatedAt": "2026-05-12T22:07:00.556Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "(id = @request.auth.id && active = true) || @request.auth.role = 'Admin'",
-        "view": "(id = @request.auth.id && active = true) || @request.auth.role = 'Admin'",
+        "list": "id = @request.auth.id || @request.auth.role = 'Admin' || (company_id = @request.auth.company_id && @request.auth.is_owner = true && company_id != '')",
+        "view": "id = @request.auth.id || @request.auth.role = 'Admin' || (company_id = @request.auth.company_id && @request.auth.is_owner = true && company_id != '')",
         "create": "",
         "update": "id = @request.auth.id || @request.auth.role = 'Admin'",
         "delete": "id = @request.auth.id || @request.auth.role = 'Admin'"
@@ -115,6 +115,12 @@
         {
           "name": "company_id",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_owner",
+          "type": "bool",
           "required": false,
           "system": false
         }
@@ -474,6 +480,54 @@
           "name": "current_uses",
           "type": "number",
           "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "employee_access",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.company_id = company_id || @request.auth.role = 'Admin')",
+        "view": "@request.auth.id != '' && (@request.auth.company_id = company_id || @request.auth.role = 'Admin')",
+        "create": "@request.auth.id != '' && @request.auth.company_id = company_id && @request.auth.is_owner = true",
+        "update": "@request.auth.id != '' && @request.auth.company_id = company_id && @request.auth.is_owner = true",
+        "delete": "@request.auth.id != '' && @request.auth.company_id = company_id && @request.auth.is_owner = true"
+      },
+      "fields": [
+        {
+          "name": "employee_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "module_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "modules"
+        },
+        {
+          "name": "company_id",
+          "type": "text",
+          "required": true,
           "system": false
         },
         {

@@ -5,7 +5,11 @@ onRecordAfterCreateSuccess((e) => {
   if (!email) return e.next()
 
   const secret = $secrets.get('PB_SUPERUSER_TOKEN') || 'my-secret'
-  const token = $security.createJWT({ id: user.id }, secret, 86400) // 24h
+  const token = $security.createJWT(
+    { id: user.id, is_owner: user.getBool('is_owner') },
+    secret,
+    86400,
+  ) // 24h
 
   const frontendUrl = 'https://hub.elektrasolucoes.tech'
   const verifyLink = `${frontendUrl}/verify?token=${token}`
@@ -14,6 +18,12 @@ onRecordAfterCreateSuccess((e) => {
   if (!resendKey) {
     $app.logger().error('RESEND_API_KEY not found')
     return e.next()
+  }
+
+  let htmlContent = `<p>Olá,</p><p>Bem-vindo ao Elektra HUB! Clique no link abaixo para verificar seu email e ativar sua conta:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
+
+  if (!user.getBool('is_owner')) {
+    htmlContent = `<p>Olá,</p><p>Você foi convidado para participar da equipe no Elektra HUB! Clique no link abaixo para ativar sua conta e definir sua senha de acesso:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
   }
 
   try {
@@ -27,8 +37,10 @@ onRecordAfterCreateSuccess((e) => {
       body: JSON.stringify({
         from: 'Elektra HUB <notificacao@elektrasolucoes.tech>',
         to: email,
-        subject: 'Confirme seu email - Elektra HUB',
-        html: `<p>Olá,</p><p>Bem-vindo ao Elektra HUB! Clique no link abaixo para verificar seu email e ativar sua conta:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`,
+        subject: user.getBool('is_owner')
+          ? 'Confirme seu email - Elektra HUB'
+          : 'Convite para Equipe - Elektra HUB',
+        html: htmlContent,
       }),
       timeout: 10,
     })
