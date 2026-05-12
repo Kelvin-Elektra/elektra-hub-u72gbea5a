@@ -17,10 +17,12 @@ onRecordAfterCreateSuccess((e) => {
     return e.next()
   }
 
-  const endpoint = mod.getString('endpoint_url')
+  let endpoint = mod.getString('endpoint_url')
   const secretName = mod.getString('secret_key_name')
 
   if (!endpoint) return e.next()
+
+  endpoint = endpoint.replace('/api/backend/v1/', '/backend/v1/')
 
   const secret = secretName ? $secrets.get(secretName) : ''
   let status = 'success'
@@ -34,15 +36,15 @@ onRecordAfterCreateSuccess((e) => {
     if (statusSub === 'active' || statusSub === 'trialing') {
       payload = {
         action: 'provision',
-        company_name: user.getString('company_name'),
+        company_name: user.getString('company_name') || 'Empresa Sem Nome',
         admin_email: user.getString('email'),
-        admin_name: user.getString('name'),
+        admin_name: user.getString('name') || 'Admin',
       }
     } else {
       payload = {
         action: 'update_status',
         company_id: user.id,
-        status: 'inactive',
+        status: statusSub,
       }
     }
   } else {
@@ -68,13 +70,24 @@ onRecordAfterCreateSuccess((e) => {
       timeout: 10,
     })
 
+    let responseText = ''
+    try {
+      if (res.json) {
+        responseText = JSON.stringify(res.json)
+      } else {
+        responseText = 'Sem resposta JSON. Verifique a URL.'
+      }
+    } catch (_) {}
+
     if (res.statusCode < 200 || res.statusCode >= 300) {
       status = 'failed'
-      errorMessage = `HTTP ${res.statusCode}`
+      errorMessage = `HTTP ${res.statusCode} | URL: ${endpoint} | Payload: ${JSON.stringify(payload)} | Response: ${responseText}`
+    } else {
+      errorMessage = `HTTP ${res.statusCode} OK`
     }
   } catch (err) {
     status = 'failed'
-    errorMessage = err.message || String(err)
+    errorMessage = `Erro: ${err.message || String(err)} | URL: ${endpoint} | Payload: ${JSON.stringify(payload)}`
   }
 
   try {

@@ -10,6 +10,7 @@ import {
   type SyncLog,
 } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
+import { cn } from '@/lib/utils'
 
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
@@ -117,7 +118,16 @@ export default function Index() {
                       Empresa: {log.expand?.subscription_id?.expand?.user_id?.company_name || '-'}
                     </p>
                     {log.error_message && (
-                      <p className="text-xs text-destructive">{log.error_message}</p>
+                      <p
+                        className={cn(
+                          'text-xs break-all mt-1 p-2 rounded-md font-mono',
+                          log.status === 'success'
+                            ? 'text-emerald-600 bg-emerald-500/10'
+                            : 'text-destructive bg-destructive/10',
+                        )}
+                      >
+                        {log.error_message}
+                      </p>
                     )}
                   </div>
                   <div className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
