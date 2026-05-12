@@ -122,7 +122,20 @@ export default function PortalSubscriptions() {
                 subscriptions.map((sub) => (
                   <TableRow key={sub.id}>
                     <TableCell className="font-medium">
-                      {sub.expand?.module_id?.name || 'Módulo Desconhecido'}
+                      <div className="flex items-center gap-3">
+                        {sub.expand?.module_id?.logo ? (
+                          <img
+                            src={pb.files.getURL(sub.expand.module_id, sub.expand.module_id.logo)}
+                            alt={sub.expand?.module_id?.name}
+                            className="w-8 h-8 rounded-md object-contain bg-muted"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+                            {sub.expand?.module_id?.name?.charAt(0) || 'M'}
+                          </div>
+                        )}
+                        <span>{sub.expand?.module_id?.name || 'Módulo Desconhecido'}</span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(sub.status)}>

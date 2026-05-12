@@ -3,7 +3,7 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
   const token = body.token
   if (!token) return e.badRequestError('No token provided')
 
-  const secret = $secrets.get('PB_SUPERUSER_TOKEN') || 'sso-secret'
+  const secret = $secrets.get('SSO_SECRET') || 'hub_secret_key'
   try {
     const payload = $security.parseJWT(token, secret)
     if (!payload.id) return e.unauthorizedError('Invalid token')

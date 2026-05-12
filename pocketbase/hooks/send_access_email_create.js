@@ -1,6 +1,6 @@
 onRecordAfterCreateSuccess((e) => {
   const status = e.record.getString('status')
-  if (status !== 'active') return e.next()
+  if (status !== 'active' && status !== 'trialing') return e.next()
 
   const userId = e.record.getString('user_id')
   const moduleId = e.record.getString('module_id')
