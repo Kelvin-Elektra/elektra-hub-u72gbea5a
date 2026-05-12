@@ -48,7 +48,13 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
     return e.forbiddenError('Conta inativa')
   }
 
-  $app.logger().info('SSO token verified successfully', 'userId', user.id)
+  const role = user.getString('role')
+  if (role !== 'Admin' && role !== 'User') {
+    $app.logger().warn('SSO verify failed: Invalid role', 'userId', user.id, 'role', role)
+    return e.forbiddenError('Role not authorized')
+  }
+
+  $app.logger().info('SSO token verified successfully', 'userId', user.id, 'role', role)
 
   return $apis.recordAuthResponse($app, e, user)
 })

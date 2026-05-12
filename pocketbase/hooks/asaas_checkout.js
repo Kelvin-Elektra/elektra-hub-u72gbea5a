@@ -50,11 +50,41 @@ routerAdd(
       customerId = custRes.json.id
     }
 
+    let modulePrice = module.getFloat('base_price')
+    let nextDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    let appliedCoupon = null
+
+    if (body.coupon) {
+      try {
+        const couponRecord = $app.findFirstRecordByData('coupons', 'code', body.coupon)
+        if (couponRecord && couponRecord.getBool('active')) {
+          const maxUses = couponRecord.getInt('max_uses')
+          const currentUses = couponRecord.getInt('current_uses')
+          if (maxUses === 0 || currentUses < maxUses) {
+            appliedCoupon = couponRecord
+            const type = couponRecord.getString('type')
+            if (type === 'percentage') {
+              const discount = couponRecord.getFloat('value')
+              modulePrice = modulePrice * (1 - discount / 100)
+            } else if (type === 'fixed_amount') {
+              const discount = couponRecord.getFloat('value')
+              modulePrice = Math.max(0, modulePrice - discount)
+            } else if (type === 'free_months') {
+              const freeMonths = couponRecord.getInt('free_months')
+              nextDueDate = new Date(Date.now() + (freeMonths * 30 + 30) * 24 * 60 * 60 * 1000)
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    const formattedNextDueDate = nextDueDate.toISOString().split('T')[0]
+
     const payload = {
       customer: customerId,
       billingType: body.paymentMethod,
-      value: module.getFloat('base_price'),
-      nextDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      value: modulePrice,
+      nextDueDate: formattedNextDueDate,
       cycle: 'MONTHLY',
       description: 'Assinatura do módulo: ' + module.getString('name'),
     }
@@ -99,8 +129,14 @@ routerAdd(
     subRecord.set('price', module.getFloat('base_price'))
     subRecord.set('asaas_customer_id', customerId)
     subRecord.set('asaas_subscription_id', subRes.json.id)
+    subRecord.set('next_billing_date', nextDueDate.toISOString())
 
     $app.save(subRecord)
+
+    if (appliedCoupon) {
+      appliedCoupon.set('current_uses', appliedCoupon.getInt('current_uses') + 1)
+      $app.save(appliedCoupon)
+    }
 
     return e.json(200, { success: true, subscription: subRecord.id })
   },

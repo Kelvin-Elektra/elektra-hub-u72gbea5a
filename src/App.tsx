@@ -9,6 +9,7 @@ import SubscriptionDetail from './pages/SubscriptionDetail'
 import Users from './pages/Users'
 import ModulesAdmin from './pages/ModulesAdmin'
 import Settings from './pages/Settings'
+import CouponsAdmin from './pages/CouponsAdmin'
 import Auth from './pages/Auth'
 import SSO from './pages/SSO'
 import Portal from './pages/Portal'
@@ -88,6 +89,7 @@ const App = () => (
               <Route path="/admin/assinaturas/:id" element={<SubscriptionDetail />} />
               <Route path="/admin/usuarios" element={<Users />} />
               <Route path="/admin/modulos" element={<ModulesAdmin />} />
+              <Route path="/admin/cupons" element={<CouponsAdmin />} />
               <Route path="/admin/configuracoes" element={<Settings />} />
             </Route>
           </Route>

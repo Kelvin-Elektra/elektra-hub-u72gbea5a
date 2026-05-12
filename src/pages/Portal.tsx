@@ -45,6 +45,7 @@ export default function Portal() {
   const [ccExpiry, setCcExpiry] = useState('')
   const [ccCvv, setCcCvv] = useState('')
   const [loading, setLoading] = useState(false)
+  const [coupon, setCoupon] = useState('')
 
   const loadData = async () => {
     if (!user) return
@@ -101,6 +102,7 @@ export default function Portal() {
             creditCardExpiryMonth: expiryMonth,
             creditCardExpiryYear: expiryYear,
             creditCardCcv: ccCvv,
+            coupon: coupon.trim() || undefined,
           }),
           headers: { 'Content-Type': 'application/json' },
         })
@@ -109,6 +111,7 @@ export default function Portal() {
       toast.success('Assinatura(s) processada(s) com sucesso!')
       setIsCheckoutOpen(false)
       setCart([])
+      setCoupon('')
       loadData()
     } catch (error: any) {
       toast.error(error.response?.message || error.message || 'Erro ao processar assinatura.')
@@ -121,7 +124,7 @@ export default function Portal() {
     try {
       const res = await pb.send('/backend/v1/sso-token', { method: 'POST' })
       const url = new URL(mod.access_url || 'https://example.com')
-      url.searchParams.set('sso_token', res.token)
+      url.searchParams.set('token', res.token)
       window.open(url.toString(), '_blank')
     } catch (err) {
       toast.error('Erro ao gerar token de acesso.')
@@ -140,6 +143,7 @@ export default function Portal() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {modules.map((mod) => {
           const sub = subscriptions.find((s) => s.module_id === mod.id)
+          const canAccess = sub?.status === 'active' || sub?.status === 'trialing'
           const isActive = sub?.status === 'active'
           const inCart = cart.some((m) => m.id === mod.id)
 
@@ -150,19 +154,19 @@ export default function Portal() {
                   <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
                     <Plug className="h-5 w-5 text-primary" />
                   </div>
-                  {isActive ? (
+                  {canAccess ? (
                     <Badge
                       variant="outline"
                       className="bg-emerald-500/10 text-emerald-600 border-emerald-200"
                     >
-                      Ativo
+                      {isActive ? 'Ativo' : 'Teste / Processando'}
                     </Badge>
-                  ) : sub ? (
+                  ) : sub && sub.status !== 'canceled' ? (
                     <Badge
                       variant="outline"
                       className="bg-amber-500/10 text-amber-600 border-amber-200"
                     >
-                      {sub.status === 'trialing' ? 'Processando' : sub.status}
+                      {sub.status}
                     </Badge>
                   ) : null}
                 </div>
@@ -200,7 +204,7 @@ export default function Portal() {
                 )}
               </CardContent>
               <CardFooter>
-                {isActive ? (
+                {canAccess ? (
                   <Button variant="outline" className="w-full" onClick={() => handleAccess(mod)}>
                     Acessar Módulo <ExternalLink className="h-4 w-4 ml-2" />
                   </Button>
@@ -377,6 +381,15 @@ export default function Portal() {
                   </div>
                 </div>
               )}
+
+              <div className="space-y-2 pt-4 border-t">
+                <Label>Cupom de Desconto (Opcional)</Label>
+                <Input
+                  placeholder="EX: PROMO100"
+                  value={coupon}
+                  onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsCheckoutOpen(false)}>

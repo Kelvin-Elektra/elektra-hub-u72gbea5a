@@ -11,7 +11,15 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import { Home, Users, CreditCard, Settings as SettingsIcon, LogOut, Package } from 'lucide-react'
+import {
+  Home,
+  Users,
+  CreditCard,
+  Settings as SettingsIcon,
+  LogOut,
+  Package,
+  Ticket,
+} from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -25,6 +33,7 @@ export default function Layout() {
     { title: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard },
     { title: 'Módulos', path: '/admin/modulos', icon: Package },
     { title: 'Usuários', path: '/admin/usuarios', icon: Users },
+    { title: 'Cupons', path: '/admin/cupons', icon: Ticket },
     { title: 'Configurações', path: '/admin/configuracoes', icon: SettingsIcon },
   ]
 
