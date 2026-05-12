@@ -17,7 +17,13 @@ routerAdd(
     try {
       // 7 days token mapping (604800 seconds)
       const token = $security.createJWT(
-        { id: user.id, email: user.getString('email'), role: user.getString('role') },
+        {
+          id: user.id,
+          user_hub_id: user.id,
+          company_hub_id: user.getString('company_id'),
+          email: user.getString('email'),
+          role: user.getString('role'),
+        },
         secret,
         604800,
       )

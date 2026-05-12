@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/table'
 import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Edit2, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Plus, Edit2, ShieldAlert, Ban } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export default function SubscriptionDetail() {
@@ -49,6 +49,9 @@ export default function SubscriptionDetail() {
   const [newModuleId, setNewModuleId] = useState('')
   const [newMaxUsers, setNewMaxUsers] = useState(1)
   const [saving, setSaving] = useState(false)
+
+  // Cancel sub state
+  const [cancelingSub, setCancelingSub] = useState<any>(null)
 
   const loadData = async () => {
     try {
@@ -88,6 +91,22 @@ export default function SubscriptionDetail() {
       loadData()
     } catch (err) {
       toast.error('Erro ao atualizar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCancelSub = async () => {
+    try {
+      setSaving(true)
+      await pb.collection('subscriptions').update(cancelingSub.id, {
+        status: 'canceled',
+      })
+      toast.success('Assinatura cancelada!')
+      setCancelingSub(null)
+      loadData()
+    } catch (err) {
+      toast.error('Erro ao cancelar assinatura')
     } finally {
       setSaving(false)
     }
@@ -159,6 +178,10 @@ export default function SubscriptionDetail() {
             <Label className="text-muted-foreground">Documento (CPF/CNPJ)</Label>
             <div className="font-medium">{user.tax_id || 'N/A'}</div>
           </div>
+          <div>
+            <Label className="text-muted-foreground">Company ID</Label>
+            <div className="font-medium">{user.company_id || 'N/A'}</div>
+          </div>
         </CardContent>
       </Card>
 
@@ -212,17 +235,29 @@ export default function SubscriptionDetail() {
                     <TableCell>R$ {sub.price?.toFixed(2).replace('.', ',') || '0,00'}</TableCell>
                     <TableCell>{sub.max_users || 1}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditingSub(sub)
-                          setEditStatus(sub.status)
-                          setEditMaxUsers(sub.max_users || 1)
-                        }}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        {sub.status !== 'canceled' && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setCancelingSub(sub)}
+                          >
+                            <Ban className="h-3 w-3 mr-1" />
+                            Cancelar Assinatura
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingSub(sub)
+                            setEditStatus(sub.status)
+                            setEditMaxUsers(sub.max_users || 1)
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -273,6 +308,32 @@ export default function SubscriptionDetail() {
             </Button>
             <Button onClick={handleUpdateSub} disabled={saving}>
               {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Sub Dialog */}
+      <Dialog open={!!cancelingSub} onOpenChange={(val) => !val && setCancelingSub(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar Assinatura</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-red-50 text-red-800 p-3 rounded-md flex items-start gap-2 text-sm">
+              <ShieldAlert className="h-5 w-5 shrink-0" />
+              <p>
+                Tem certeza que deseja cancelar esta assinatura? O acesso do cliente será revogado
+                imediatamente.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelingSub(null)}>
+              Voltar
+            </Button>
+            <Button variant="destructive" onClick={handleCancelSub} disabled={saving}>
+              {saving ? 'Cancelando...' : 'Confirmar Cancelamento'}
             </Button>
           </DialogFooter>
         </DialogContent>

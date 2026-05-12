@@ -43,7 +43,8 @@ onRecordAfterCreateSuccess((e) => {
     if (statusSub === 'active' || statusSub === 'trialing') {
       payload = {
         action: 'provision',
-        hub_id: user.id,
+        hub_user_id: user.id,
+        hub_company_id: user.getString('company_id'),
         company_name: user.getString('company_name') || 'Empresa Sem Nome',
         admin_email: user.getString('email'),
         admin_name: user.getString('name') || 'Admin',
@@ -52,7 +53,8 @@ onRecordAfterCreateSuccess((e) => {
     } else {
       payload = {
         action: 'update_status',
-        hub_id: user.id,
+        hub_user_id: user.id,
+        hub_company_id: user.getString('company_id'),
         status: mappedStatus,
         max_users: sub.getInt('max_users') || 1,
       }

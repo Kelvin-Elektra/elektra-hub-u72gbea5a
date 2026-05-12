@@ -47,7 +47,8 @@ onRecordAfterUpdateSuccess((e) => {
   if (isCrm) {
     payload = {
       action: 'update_status',
-      hub_id: user.id,
+      hub_user_id: user.id,
+      hub_company_id: user.getString('company_id'),
       status: mappedStatus,
       max_users: sub.getInt('max_users') || 1,
     }

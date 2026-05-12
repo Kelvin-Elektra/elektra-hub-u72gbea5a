@@ -30,16 +30,18 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
     return e.unauthorizedError('Invalid or expired token')
   }
 
-  if (!payload || !payload.id) {
-    $app.logger().error('SSO verify failed: Token payload missing id')
+  if (!payload || (!payload.id && !payload.user_hub_id)) {
+    $app.logger().error('SSO verify failed: Token payload missing id or user_hub_id')
     return e.unauthorizedError('Invalid token payload')
   }
 
+  const searchId = payload.id || payload.user_hub_id
+
   let user
   try {
-    user = $app.findRecordById('users', payload.id)
+    user = $app.findRecordById('users', searchId)
   } catch (err) {
-    $app.logger().error('SSO verify failed: User not found', 'userId', payload.id)
+    $app.logger().error('SSO verify failed: User not found', 'userId', searchId)
     return e.unauthorizedError('User not found')
   }
 
