@@ -5,10 +5,14 @@ routerAdd(
     const user = e.auth
     if (!user) return e.unauthorizedError('Unauthorized')
 
-    const secret = $secrets.get('PB_SUPERUSER_TOKEN') || 'sso-secret'
-    const token = $security.createJWT({ id: user.id, email: user.getString('email') }, secret, 300)
+    // 7 days token mapping (604800 seconds)
+    const token = $security.createJWT(
+      { id: user.id, email: user.getString('email'), role: user.getString('role') },
+      $secrets.get('SSO_SECRET') || 'hub_secret_key',
+      604800,
+    )
 
-    return e.json(200, { token: token })
+    return e.json(200, { token })
   },
   $apis.requireAuth(),
 )

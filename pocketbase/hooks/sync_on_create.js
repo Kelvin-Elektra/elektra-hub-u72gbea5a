@@ -47,12 +47,14 @@ onRecordAfterCreateSuccess((e) => {
         company_name: user.getString('company_name') || 'Empresa Sem Nome',
         admin_email: user.getString('email'),
         admin_name: user.getString('name') || 'Admin',
+        max_users: sub.getInt('max_users') || 1,
       }
     } else {
       payload = {
         action: 'update_status',
         hub_id: user.id,
         status: mappedStatus,
+        max_users: sub.getInt('max_users') || 1,
       }
     }
   } else {
@@ -63,6 +65,7 @@ onRecordAfterCreateSuccess((e) => {
       tax_id: user.getString('tax_id'),
       status: statusSub,
       module_slug: mod.getString('name'),
+      max_users: sub.getInt('max_users') || 1,
     }
   }
 
