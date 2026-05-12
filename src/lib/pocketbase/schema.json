@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-12T01:24:58.087Z",
+  "generatedAt": "2026-05-12T13:58:42.554Z",
   "collections": [
     {
       "name": "users",
@@ -227,6 +227,24 @@
           "type": "url",
           "required": false,
           "system": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "logo",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "features",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []
@@ -300,9 +318,15 @@
           "required": true,
           "system": false,
           "collectionRef": "users"
+        },
+        {
+          "name": "max_users",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
-      "indexes": []
+      "indexes": ["CREATE INDEX `idx_subs_status` ON `subscriptions` (status)"]
     },
     {
       "name": "sync_logs",

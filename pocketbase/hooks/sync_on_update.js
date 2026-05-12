@@ -49,6 +49,7 @@ onRecordAfterUpdateSuccess((e) => {
       action: 'update_status',
       hub_id: user.id,
       status: mappedStatus,
+      max_users: sub.getInt('max_users') || 1,
     }
   } else {
     payload = {
@@ -58,6 +59,7 @@ onRecordAfterUpdateSuccess((e) => {
       tax_id: user.getString('tax_id'),
       status: statusSub,
       module_slug: mod.getString('name'),
+      max_users: sub.getInt('max_users') || 1,
     }
   }
 

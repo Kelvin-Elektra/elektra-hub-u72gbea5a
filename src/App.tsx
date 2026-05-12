@@ -7,6 +7,7 @@ import Index from './pages/Index'
 import Subscriptions from './pages/Subscriptions'
 import SubscriptionDetail from './pages/SubscriptionDetail'
 import Users from './pages/Users'
+import ModulesAdmin from './pages/ModulesAdmin'
 import Settings from './pages/Settings'
 import Auth from './pages/Auth'
 import Portal from './pages/Portal'
@@ -82,6 +83,7 @@ const App = () => (
               <Route path="/admin/assinaturas" element={<Subscriptions />} />
               <Route path="/admin/assinaturas/:id" element={<SubscriptionDetail />} />
               <Route path="/admin/usuarios" element={<Users />} />
+              <Route path="/admin/modulos" element={<ModulesAdmin />} />
               <Route path="/admin/configuracoes" element={<Settings />} />
             </Route>
           </Route>

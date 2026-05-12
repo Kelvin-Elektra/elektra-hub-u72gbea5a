@@ -8,111 +8,173 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Search, Settings2 } from 'lucide-react'
-import { getUsers, type User } from '@/services/api'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import pb from '@/lib/pocketbase/client'
+import { Eye, Search } from 'lucide-react'
 import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Subscriptions() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [users, setUsers] = useState<User[]>([])
+  const [subscriptions, setSubscriptions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('active_trialing')
+  const [search, setSearch] = useState('')
 
-  const loadData = async () => {
+  const loadSubscriptions = async () => {
     try {
-      const data = await getUsers()
-      setUsers(data.filter((u) => u.role === 'User'))
-    } catch (e) {
-      console.error(e)
+      setLoading(true)
+      const records = await pb.collection('subscriptions').getFullList({
+        expand: 'user_id,module_id',
+        sort: '-created',
+      })
+      setSubscriptions(records)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadData()
+    loadSubscriptions()
   }, [])
-  useRealtime('users', loadData)
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.tax_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  useRealtime('subscriptions', loadSubscriptions)
+
+  const filteredSubs = subscriptions.filter((sub) => {
+    let matchStatus = true
+    if (statusFilter === 'active_trialing') {
+      matchStatus = sub.status === 'active' || sub.status === 'trialing'
+    } else if (statusFilter !== 'all') {
+      matchStatus = sub.status === statusFilter
+    }
+
+    let matchSearch = true
+    if (search) {
+      const s = search.toLowerCase()
+      matchSearch =
+        sub.expand?.user_id?.email?.toLowerCase().includes(s) ||
+        sub.expand?.user_id?.name?.toLowerCase().includes(s) ||
+        sub.expand?.module_id?.name?.toLowerCase().includes(s)
+    }
+
+    return matchStatus && matchSearch
+  })
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestão de Assinaturas</h1>
-          <p className="text-muted-foreground">Gerencie o acesso aos módulos dos seus clientes.</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Assinaturas</h1>
+        <p className="text-muted-foreground">Gerencie as assinaturas dos clientes.</p>
       </div>
 
       <Card>
-        <div className="p-4 flex items-center justify-between border-b">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, email ou documento..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-lg font-medium">Filtros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por e-mail, cliente ou módulo..."
+                className="pl-8"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="w-full sm:w-[200px]">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active_trialing">Ativas e Trial</SelectItem>
+                  <SelectItem value="active">Ativas</SelectItem>
+                  <SelectItem value="trialing">Trial</SelectItem>
+                  <SelectItem value="overdue">Em Atraso</SelectItem>
+                  <SelectItem value="canceled">Canceladas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead>Cliente / Empresa</TableHead>
-              <TableHead>Documento (CPF/CNPJ)</TableHead>
-              <TableHead>Status Email</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredUsers.length > 0 ? (
-              filteredUsers.map((u) => (
-                <TableRow key={u.id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">
-                        {u.person_type === 'PJ' ? u.company_name : u.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{u.email}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{u.tax_id || '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant={u.verified ? 'default' : 'secondary'}>
-                      {u.verified ? 'Verificado' : 'Pendente'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                      className="hover:bg-primary/10 hover:text-primary transition-colors"
-                    >
-                      <Link to={`/admin/assinaturas/${u.id}`} className="flex items-center gap-2">
-                        <Settings2 className="h-4 w-4" /> Gerenciar
-                      </Link>
-                    </Button>
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Módulo</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Preço</TableHead>
+                <TableHead>Usuários (Max)</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    Carregando...
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                  Nenhum cliente encontrado.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ) : filteredSubs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    Nenhuma assinatura encontrada.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredSubs.map((sub) => (
+                  <TableRow key={sub.id}>
+                    <TableCell>
+                      <div className="font-medium">{sub.expand?.user_id?.name || 'Sem nome'}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {sub.expand?.user_id?.email}
+                      </div>
+                    </TableCell>
+                    <TableCell>{sub.expand?.module_id?.name}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          sub.status === 'active'
+                            ? 'default'
+                            : sub.status === 'canceled'
+                              ? 'destructive'
+                              : 'secondary'
+                        }
+                      >
+                        {sub.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>R$ {sub.price?.toFixed(2).replace('.', ',') || '0,00'}</TableCell>
+                    <TableCell>{sub.max_users || 1}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" asChild>
+                        <Link to={`/admin/assinaturas/${sub.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
     </div>
   )

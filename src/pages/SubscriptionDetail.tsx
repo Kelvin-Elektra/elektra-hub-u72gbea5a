@@ -1,207 +1,197 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, User as UserIcon, Plug, CreditCard } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
-  getUser,
-  getUserSubscriptions,
-  getModules,
-  createSubscription,
-  updateSubscription,
-  type User,
-  type Subscription,
-  type Module,
-} from '@/services/api'
-import { getErrorMessage } from '@/lib/pocketbase/errors'
-import { useRealtime } from '@/hooks/use-realtime'
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import pb from '@/lib/pocketbase/client'
+import { toast } from 'sonner'
+import { ArrowLeft, Save } from 'lucide-react'
 
 export default function SubscriptionDetail() {
-  const { id } = useParams()
-  const [client, setClient] = useState<User | null>(null)
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const [modules, setModules] = useState<Module[]>([])
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [sub, setSub] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-  const loadData = async () => {
-    if (!id) return
-    try {
-      const [u, subs, mods] = await Promise.all([
-        getUser(id),
-        getUserSubscriptions(id),
-        getModules(),
-      ])
-      setClient(u)
-      setSubscriptions(subs)
-      setModules(mods)
-    } catch (e) {
-      console.error(e)
-    }
-  }
+  const [status, setStatus] = useState('')
+  const [maxUsers, setMaxUsers] = useState(1)
 
   useEffect(() => {
-    loadData()
-  }, [id])
-  useRealtime('subscriptions', loadData)
-
-  if (!client) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-        <h2 className="text-2xl font-bold text-muted-foreground">Carregando...</h2>
-      </div>
-    )
-  }
-
-  const handleToggleSubscription = async (modId: string, currentSub?: Subscription) => {
-    try {
-      if (currentSub) {
-        const newStatus = currentSub.status === 'active' ? 'canceled' : 'active'
-        await updateSubscription(currentSub.id, { status: newStatus })
-        toast.success(`Acesso ${newStatus === 'active' ? 'restaurado' : 'revogado'}.`)
-      } else {
-        const mod = modules.find((m) => m.id === modId)
-        await createSubscription({
-          user_id: client.id,
-          module_id: modId,
-          status: 'active',
-          price: mod?.base_price || 0,
+    const loadData = async () => {
+      try {
+        if (!id) return
+        const record = await pb.collection('subscriptions').getOne(id, {
+          expand: 'user_id,module_id',
         })
-        toast.success('Módulo ativado para este cliente.')
+        setSub(record)
+        setStatus(record.status)
+        setMaxUsers(record.max_users || 1)
+      } catch (err) {
+        toast.error('Erro ao carregar assinatura')
+        navigate('/admin/assinaturas')
+      } finally {
+        setLoading(false)
       }
-      loadData()
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    }
+    loadData()
+  }, [id, navigate])
+
+  const handleSave = async () => {
+    try {
+      setSaving(true)
+      if (!id) return
+      await pb.collection('subscriptions').update(id, {
+        status,
+        max_users: maxUsers,
+      })
+      toast.success('Assinatura atualizada com sucesso!')
+    } catch (err) {
+      toast.error('Erro ao atualizar assinatura')
+    } finally {
+      setSaving(false)
     }
   }
 
+  if (loading || !sub) {
+    return <div className="p-8 text-center text-muted-foreground">Carregando...</div>
+  }
+
+  const user = sub.expand?.user_id
+  const module = sub.expand?.module_id
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="rounded-full">
-          <Link to="/admin/assinaturas">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button variant="outline" size="icon" onClick={() => navigate('/admin/assinaturas')}>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {client.person_type === 'PJ' ? client.company_name : client.name}
-          </h1>
-          <p className="text-muted-foreground flex items-center gap-2 mt-1">
-            <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">
-              {client.tax_id || 'Sem documento'}
-            </span>
-            • Cadastrado em {new Date(client.created).toLocaleDateString('pt-BR')}
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">Detalhes da Assinatura</h1>
+          <p className="text-muted-foreground">ID: {sub.id}</p>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserIcon className="h-5 w-5" /> Dados do Cliente
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Nome:</span>
-                <p className="font-medium">{client.name}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Email:</span>
-                <p className="font-medium">{client.email}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Tipo:</span>
-                <p className="font-medium">{client.person_type}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Endereço:</span>
-                <p className="font-medium">
-                  {client.address}, {client.address_number}
-                  {client.complement && ` - ${client.complement}`}
-                  <br />
-                  {client.neighborhood} - {client.city}/{client.state}
-                  <br />
-                  CEP: {client.postal_code}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações do Cliente</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-muted-foreground">Nome</Label>
+              <div className="font-medium">{user?.name || 'N/A'}</div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">E-mail</Label>
+              <div className="font-medium">{user?.email || 'N/A'}</div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Empresa</Label>
+              <div className="font-medium">{user?.company_name || 'N/A'}</div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Documento (CPF/CNPJ)</Label>
+              <div className="font-medium">{user?.tax_id || 'N/A'}</div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plug className="h-5 w-5" /> Módulos e Assinaturas
-              </CardTitle>
-              <CardDescription>
-                Controle o acesso deste cliente aos módulos disponíveis no Hub.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {modules.map((mod) => {
-                const sub = subscriptions.find((s) => s.module_id === mod.id)
-                const isActive = sub?.status === 'active'
-                return (
-                  <div
-                    key={mod.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-card shadow-sm gap-4"
+        <Card>
+          <CardHeader>
+            <CardTitle>Detalhes do Módulo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-muted-foreground">Módulo</Label>
+              <div className="font-medium">{module?.name || 'N/A'}</div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Módulo ID</Label>
+              <div className="font-medium font-mono text-sm">{module?.id || 'N/A'}</div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">URL de Acesso</Label>
+              <div className="font-medium text-primary">
+                {module?.access_url ? (
+                  <a
+                    href={module.access_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:underline"
                   >
-                    <div className="space-y-2 flex-1">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        {mod.name}
-                        {isActive ? (
-                          <Badge
-                            variant="outline"
-                            className="bg-emerald-500/10 text-emerald-600 border-emerald-200"
-                          >
-                            Ativo
-                          </Badge>
-                        ) : sub ? (
-                          <Badge
-                            variant="outline"
-                            className="bg-amber-500/10 text-amber-600 border-amber-200"
-                          >
-                            {sub.status}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-muted text-muted-foreground">
-                            Não Assinado
-                          </Badge>
-                        )}
-                      </h4>
+                    {module.access_url}
+                  </a>
+                ) : (
+                  'N/A'
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                      {sub && (
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2 bg-muted/40 p-2 rounded border">
-                          <div className="flex items-center gap-1">
-                            <CreditCard className="h-3 w-3" />
-                            <strong>Customer ID:</strong> {sub.asaas_customer_id || 'N/A'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <CreditCard className="h-3 w-3" />
-                            <strong>Subscription ID:</strong> {sub.asaas_subscription_id || 'N/A'}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <Button
-                      variant={isActive ? 'destructive' : 'default'}
-                      onClick={() => handleToggleSubscription(mod.id, sub)}
-                      className="w-full sm:w-auto shrink-0"
-                    >
-                      {isActive ? 'Bloquear Acesso' : 'Ativar Acesso'}
-                    </Button>
-                  </div>
-                )
-              })}
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Configurações da Assinatura</CardTitle>
+            <CardDescription>Altere limites e status manualmente</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativa</SelectItem>
+                    <SelectItem value="trialing">Trial</SelectItem>
+                    <SelectItem value="overdue">Atrasada</SelectItem>
+                    <SelectItem value="canceled">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Limite de Usuários (CRM)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={maxUsers}
+                  onChange={(e) => setMaxUsers(parseInt(e.target.value) || 1)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Preço</Label>
+                <Input value={`R$ ${sub.price?.toFixed(2).replace('.', ',') || '0,00'}`} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label>ID Asaas Assinatura</Label>
+                <Input value={sub.asaas_subscription_id || 'N/A'} disabled />
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-end border-t pt-4 mt-2">
+            <Button onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   )

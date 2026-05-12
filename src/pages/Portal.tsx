@@ -171,10 +171,33 @@ export default function Portal() {
                   R$ {mod.base_price.toFixed(2).replace('.', ',')} / mês
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-1">
-                <p className="text-sm text-muted-foreground">
-                  Ative este módulo para acessar funcionalidades exclusivas do {mod.name}.
-                </p>
+              <CardContent className="flex-1 space-y-4">
+                {mod.logo && (
+                  <div className="flex justify-center mb-4">
+                    <img
+                      src={pb.files.getURL(mod as any, mod.logo)}
+                      alt={`Logo ${mod.name}`}
+                      className="h-16 object-contain"
+                    />
+                  </div>
+                )}
+                {mod.description ? (
+                  <p className="text-sm text-muted-foreground">{mod.description}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Ative este módulo para acessar funcionalidades exclusivas do {mod.name}.
+                  </p>
+                )}
+                {mod.features && (
+                  <div className="space-y-1 mt-4">
+                    <p className="text-xs font-semibold text-foreground">Recursos:</p>
+                    <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
+                      {mod.features.split('\n').map((feat: string, i: number) => (
+                        <li key={i}>{feat}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </CardContent>
               <CardFooter>
                 {isActive ? (
