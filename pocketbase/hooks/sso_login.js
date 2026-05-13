@@ -2,6 +2,13 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
   const body = e.requestInfo().body || {}
   const token = body.token
 
+  const unauthorizedResponse = (msg) =>
+    e.json(401, {
+      success: false,
+      message: msg || 'Token inválido',
+      status: 401,
+    })
+
   const notFoundResponse = () =>
     e.json(404, {
       success: false,
@@ -10,7 +17,7 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
     })
 
   if (!token) {
-    return notFoundResponse()
+    return unauthorizedResponse('Token não fornecido')
   }
 
   const secret = $secrets.get('SSO_SECRET')
@@ -23,11 +30,11 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
   try {
     payload = $security.parseJWT(token, secret)
   } catch (err) {
-    return notFoundResponse()
+    return unauthorizedResponse('Token inválido')
   }
 
   if (!payload || (!payload.id && !payload.user_hub_id && !payload.hub_user_id)) {
-    return notFoundResponse()
+    return unauthorizedResponse('Payload inválido')
   }
 
   const searchId = payload.hub_user_id || payload.user_hub_id || payload.id

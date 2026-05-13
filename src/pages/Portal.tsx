@@ -48,8 +48,8 @@ export default function Portal() {
     if (!rawSsoToken) return
     const verifySso = async () => {
       setIsVerifyingSSO(true)
-      // Token Sanitization: removing anything starting from &
-      const sanitizedToken = rawSsoToken.split('&')[0]
+      // Token Sanitization: clean the JWT string to remove unexpected query/hash artifacts
+      const sanitizedToken = rawSsoToken.replace(/[&?#].*$/, '').trim()
       try {
         const res = await pb.send('/backend/v1/sso-verify', {
           method: 'POST',

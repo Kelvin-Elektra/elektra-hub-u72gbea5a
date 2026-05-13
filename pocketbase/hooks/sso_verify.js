@@ -2,16 +2,23 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
   const body = e.requestInfo().body || {}
   const token = body.token
 
+  const unauthorizedResponse = (msg) =>
+    e.json(401, {
+      success: false,
+      message: msg || 'Token inválido ou não fornecido',
+      status: 401,
+    })
+
   const notFoundResponse = () =>
     e.json(404, {
       success: false,
-      message: 'Token inválido ou usuário não localizado',
+      message: 'Usuário não localizado',
       status: 404,
     })
 
   if (!token) {
     $app.logger().warn('SSO verify failed: No token provided')
-    return notFoundResponse()
+    return unauthorizedResponse('No token provided')
   }
 
   const secret = $secrets.get('SSO_SECRET')
@@ -25,12 +32,12 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
     payload = $security.parseJWT(token, secret)
   } catch (err) {
     $app.logger().error('SSO verify failed: Invalid token', 'error', String(err))
-    return notFoundResponse()
+    return unauthorizedResponse('Token inválido')
   }
 
   if (!payload || (!payload.id && !payload.user_hub_id && !payload.hub_user_id)) {
     $app.logger().error('SSO verify failed: Token payload missing id or user_hub_id')
-    return notFoundResponse()
+    return unauthorizedResponse('Payload inválido')
   }
 
   const searchId = payload.hub_user_id || payload.user_hub_id || payload.id
