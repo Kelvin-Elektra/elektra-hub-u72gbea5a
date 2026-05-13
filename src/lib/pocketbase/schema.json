@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-13T02:39:37.190Z",
+  "generatedAt": "2026-05-13T12:33:33.234Z",
   "collections": [
     {
       "name": "users",
@@ -29,28 +29,39 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["Admin", "User"]
+          "selectValues": [
+            "Admin",
+            "User"
+          ]
         },
         {
           "name": "person_type",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["PF", "PJ"]
+          "selectValues": [
+            "PF",
+            "PJ"
+          ]
         },
         {
           "name": "tax_id",
@@ -166,21 +177,29 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["active", "inactive"]
+          "selectValues": [
+            "active",
+            "inactive"
+          ]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "hub_company_id",
@@ -189,7 +208,9 @@
           "system": false
         }
       ],
-      "indexes": ["CREATE INDEX `idx_companies_hub_company_id` ON `companies` (hub_company_id)"]
+      "indexes": [
+        "CREATE INDEX `idx_companies_hub_company_id` ON `companies` (hub_company_id)"
+      ]
     },
     {
       "name": "modules",
@@ -231,21 +252,30 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["active", "maintenance", "deprecated"]
+          "selectValues": [
+            "active",
+            "maintenance",
+            "deprecated"
+          ]
         },
         {
           "name": "created",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "access_url",
@@ -297,7 +327,12 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["trialing", "active", "overdue", "canceled"]
+          "selectValues": [
+            "trialing",
+            "active",
+            "overdue",
+            "canceled"
+          ]
         },
         {
           "name": "price",
@@ -328,14 +363,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "user_id",
@@ -351,7 +391,9 @@
           "system": false
         }
       ],
-      "indexes": ["CREATE INDEX `idx_subs_status` ON `subscriptions` (status)"]
+      "indexes": [
+        "CREATE INDEX `idx_subs_status` ON `subscriptions` (status)"
+      ]
     },
     {
       "name": "sync_logs",
@@ -376,7 +418,10 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["success", "failed"]
+          "selectValues": [
+            "success",
+            "failed"
+          ]
         },
         {
           "name": "error_message",
@@ -389,14 +434,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": []
@@ -429,14 +479,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": []
@@ -463,7 +518,11 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["percentage", "fixed_amount", "free_months"]
+          "selectValues": [
+            "percentage",
+            "fixed_amount",
+            "free_months"
+          ]
         },
         {
           "name": "value",
@@ -500,14 +559,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": []
@@ -548,14 +612,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": []
