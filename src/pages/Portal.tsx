@@ -202,6 +202,10 @@ export default function Portal() {
       const res = await pb.send('/backend/v1/sso-token', { method: 'POST' })
       const url = new URL(mod.access_url || 'https://example.com')
       url.searchParams.set('sso_token', res.token)
+      url.searchParams.set(
+        'sso_verify_url',
+        `${import.meta.env.VITE_POCKETBASE_URL}/api/backend/v1/sso-verify`,
+      )
       window.open(url.toString(), '_blank')
     } catch (err) {
       toast.error('Erro ao gerar token de acesso.')
