@@ -59,11 +59,11 @@ export default function Portal() {
           headers: { 'Content-Type': 'application/json' },
         })
 
-        if (!verifyResponse.ok) {
-          throw new Error('Token verification failed')
-        }
+        const verifyData = await verifyResponse.json().catch(() => ({}))
 
-        const verifyData = await verifyResponse.json()
+        if (!verifyResponse.ok) {
+          throw new Error(verifyData.message || 'Token verification failed')
+        }
 
         if (verifyData.status === 'success' && verifyData.id) {
           // Step 2: Proceed to login using the token via PocketBase client
@@ -85,8 +85,8 @@ export default function Portal() {
         } else {
           throw new Error('Invalid verification response')
         }
-      } catch (error) {
-        toast.error('Token inválido ou usuário não localizado')
+      } catch (error: any) {
+        toast.error(error.message || 'Token inválido ou usuário não localizado')
         const url = new URL(window.location.href)
         url.searchParams.delete('sso_token')
         window.history.replaceState({}, '', url)
