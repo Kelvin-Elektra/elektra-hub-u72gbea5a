@@ -51,19 +51,39 @@ export default function Portal() {
       // Token Sanitization: clean the JWT string to remove unexpected query/hash artifacts
       const sanitizedToken = rawSsoToken.replace(/[&?#].*$/, '').trim()
       try {
-        const res = await pb.send('/backend/v1/sso-verify', {
+        // Step 1: Verify token using the standardized external endpoint path
+        const verifyUrl = `${import.meta.env.VITE_POCKETBASE_URL}/api/backend/v1/sso-verify`
+        const verifyResponse = await fetch(verifyUrl, {
           method: 'POST',
           body: JSON.stringify({ token: sanitizedToken }),
           headers: { 'Content-Type': 'application/json' },
         })
-        if (res.status === 'valid' && res.token && res.record) {
-          pb.authStore.save(res.token, res.record)
-          const url = new URL(window.location.href)
-          url.searchParams.delete('sso_token')
-          window.history.replaceState({}, '', url)
-          toast.success('Autenticado com sucesso via SSO!')
+
+        if (!verifyResponse.ok) {
+          throw new Error('Token verification failed')
+        }
+
+        const verifyData = await verifyResponse.json()
+
+        if (verifyData.status === 'success' && verifyData.id) {
+          // Step 2: Proceed to login using the token via PocketBase client
+          const loginRes = await pb.send('/backend/v1/sso-login', {
+            method: 'POST',
+            body: JSON.stringify({ token: sanitizedToken }),
+            headers: { 'Content-Type': 'application/json' },
+          })
+
+          if (loginRes.token && loginRes.record) {
+            pb.authStore.save(loginRes.token, loginRes.record)
+            const url = new URL(window.location.href)
+            url.searchParams.delete('sso_token')
+            window.history.replaceState({}, '', url)
+            toast.success('Autenticado com sucesso via SSO!')
+          } else {
+            throw new Error('Login failed')
+          }
         } else {
-          throw new Error('Invalid response')
+          throw new Error('Invalid verification response')
         }
       } catch (error) {
         toast.error('Token inválido ou usuário não localizado')
