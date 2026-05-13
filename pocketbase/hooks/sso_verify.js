@@ -5,7 +5,7 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
   const notFoundResponse = () =>
     e.json(404, {
       success: false,
-      message: "The requested resource wasn't found.",
+      message: 'Token inválido ou usuário não localizado',
       status: 404,
     })
 
@@ -54,8 +54,12 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
 
   $app.logger().info('SSO token verified successfully', 'userId', user.id)
 
+  const authResponse = $apis.recordAuthResponse($app, e, user)
+
   return e.json(200, {
     id: user.id,
     status: 'valid',
+    token: authResponse.token,
+    record: authResponse.record,
   })
 })

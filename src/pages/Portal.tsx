@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   Card,
   CardContent,
@@ -38,6 +39,44 @@ export default function Portal() {
   const { user } = useAuth()
   const [modules, setModules] = useState<Module[]>([])
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
+  const rawSsoToken = searchParams.get('sso_token')
+  const [isVerifyingSSO, setIsVerifyingSSO] = useState(!!rawSsoToken)
+
+  useEffect(() => {
+    if (!rawSsoToken) return
+    const verifySso = async () => {
+      setIsVerifyingSSO(true)
+      // Token Sanitization: removing anything starting from &
+      const sanitizedToken = rawSsoToken.split('&')[0]
+      try {
+        const res = await pb.send('/backend/v1/sso-verify', {
+          method: 'POST',
+          body: JSON.stringify({ token: sanitizedToken }),
+          headers: { 'Content-Type': 'application/json' },
+        })
+        if (res.status === 'valid' && res.token && res.record) {
+          pb.authStore.save(res.token, res.record)
+          const url = new URL(window.location.href)
+          url.searchParams.delete('sso_token')
+          window.history.replaceState({}, '', url)
+          toast.success('Autenticado com sucesso via SSO!')
+        } else {
+          throw new Error('Invalid response')
+        }
+      } catch (error) {
+        toast.error('Token inválido ou usuário não localizado')
+        const url = new URL(window.location.href)
+        url.searchParams.delete('sso_token')
+        window.history.replaceState({}, '', url)
+        window.location.href = '/login'
+      } finally {
+        setIsVerifyingSSO(false)
+      }
+    }
+    verifySso()
+  }, [rawSsoToken])
 
   const [cart, setCart] = useState<Module[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
@@ -211,6 +250,19 @@ export default function Portal() {
       toast.error('Erro ao gerar token de acesso.')
     }
   }
+
+  if (isVerifyingSSO) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[50vh]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+          <p className="text-muted-foreground">Autenticando via SSO...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) return null
 
   return (
     <div className="space-y-6 relative pb-20">

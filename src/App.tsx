@@ -25,26 +25,35 @@ import Team from './pages/Team'
 const RequireAuth = ({ allowedRoles }: { allowedRoles?: string[] }) => {
   const { user, loading } = useAuth()
   const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
+  const hasSsoToken = searchParams.has('sso_token')
 
   if (loading) return null
-  if (!user) return <Navigate to="/login" replace />
 
-  if (!user.verified && location.pathname !== '/unverified') {
+  if (!user) {
+    if (hasSsoToken && location.pathname === '/cliente') {
+      // Allow routing to Portal for SSO verification
+    } else {
+      return <Navigate to="/login" replace />
+    }
+  }
+
+  if (user && !user.verified && location.pathname !== '/unverified') {
     return <Navigate to="/unverified" replace />
   }
 
-  if (user.verified && location.pathname === '/unverified') {
+  if (user && user.verified && location.pathname === '/unverified') {
     return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (user && allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
   }
 
-  if (user.role !== 'Admin' && location.pathname.startsWith('/admin')) {
+  if (user && user.role !== 'Admin' && location.pathname.startsWith('/admin')) {
     return <Navigate to="/cliente" replace />
   }
-  if (user.role === 'Admin' && location.pathname.startsWith('/cliente')) {
+  if (user && user.role === 'Admin' && location.pathname.startsWith('/cliente')) {
     return <Navigate to="/admin" replace />
   }
 
