@@ -25,7 +25,7 @@ export default function SSO() {
       }
 
       try {
-        const response = await pb.send<{ token: string; record: any }>('/backend/v1/sso-verify', {
+        const response = await pb.send<{ token: string; record: any }>('/backend/v1/sso-login', {
           method: 'POST',
           body: JSON.stringify({ token }),
           headers: { 'Content-Type': 'application/json' },
