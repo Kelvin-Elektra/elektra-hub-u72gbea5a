@@ -2,8 +2,15 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
   const body = e.requestInfo().body || {}
   const token = body.token
 
+  const notFoundResponse = () =>
+    e.json(404, {
+      success: false,
+      message: "The requested resource wasn't found.",
+      status: 404,
+    })
+
   if (!token) {
-    return e.unauthorizedError('No token provided')
+    return notFoundResponse()
   }
 
   const secret = $secrets.get('SSO_SECRET')
@@ -16,11 +23,11 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
   try {
     payload = $security.parseJWT(token, secret)
   } catch (err) {
-    return e.unauthorizedError('Invalid token')
+    return notFoundResponse()
   }
 
   if (!payload || (!payload.id && !payload.user_hub_id && !payload.hub_user_id)) {
-    return e.unauthorizedError('Token payload missing id')
+    return notFoundResponse()
   }
 
   const searchId = payload.hub_user_id || payload.user_hub_id || payload.id
@@ -32,12 +39,12 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
     try {
       user = $app.findRecordById('users', searchId)
     } catch (err2) {
-      return e.unauthorizedError('User not found')
+      return notFoundResponse()
     }
   }
 
   if (user.getBool('active') === false) {
-    return e.unauthorizedError('User is inactive')
+    return notFoundResponse()
   }
 
   return $apis.recordAuthResponse($app, e, user)

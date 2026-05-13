@@ -199,7 +199,7 @@ export default function Portal() {
 
   const handleAccess = async (mod: Module) => {
     try {
-      const res = await pb.send('/backend/v1/sso-token', { method: 'POST' })
+      const res = await pb.send('/backend/v1/sso-generate', { method: 'POST' })
       const url = new URL(mod.access_url || 'https://example.com')
       url.searchParams.set('sso_token', res.token)
       url.searchParams.set(

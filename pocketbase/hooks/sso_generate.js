@@ -1,6 +1,6 @@
 routerAdd(
   'POST',
-  '/backend/v1/sso-token',
+  '/backend/v1/sso-generate',
   (e) => {
     const user = e.auth
     if (!user) {
