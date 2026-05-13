@@ -68,7 +68,10 @@ export default function Portal() {
           throw new Error(verifyData.message || 'Token verification failed')
         }
 
-        if (verifyData.status === 'success' && verifyData.id) {
+        if (verifyData.id && verifyData.status_token) {
+          if (verifyData.status_token !== 'active') {
+            throw new Error('Conta de usuário inativa.')
+          }
           // Step 2: Proceed to login using the token via PocketBase client
           const loginRes = await pb.send('/backend/v1/sso-login', {
             method: 'POST',

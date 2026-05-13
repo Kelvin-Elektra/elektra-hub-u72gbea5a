@@ -60,56 +60,44 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
     }
   }
 
-  if (user.getBool('active') === false) {
-    $app.logger().warn('SSO verify failed: User is inactive', 'userId', user.id)
-    return e.json(403, {
-      status: 403,
-      message: 'User account is inactive',
-      error_details: `User active status is false for userId: ${user.id}`,
-    })
-  }
-
+  const isActive = user.getBool('active')
   const companyId = user.getString('company_id')
-  if (!companyId) {
-    $app.logger().warn('SSO verify failed: User has no company_id', 'userId', user.id)
-    return e.json(403, {
-      status: 403,
-      message: 'Company account is inactive or blocked',
-      error_details: `Company ID is empty for userId: ${user.id}`,
-    })
-  }
 
-  let company
-  try {
+  let companyActive = true
+  if (companyId) {
     try {
-      company = $app.findRecordById('companies', companyId)
+      let company
+      try {
+        company = $app.findRecordById('companies', companyId)
+      } catch (err) {
+        company = $app.findFirstRecordByData('companies', 'hub_company_id', companyId)
+      }
+      if (company.getString('status') !== 'active') {
+        companyActive = false
+      }
     } catch (err) {
-      company = $app.findFirstRecordByData('companies', 'hub_company_id', companyId)
+      companyActive = false
     }
-  } catch (err) {
-    $app.logger().warn('SSO verify failed: Company not found', 'companyId', companyId)
-    return e.json(404, {
-      status: 404,
-      message: 'Company account not found',
-      error_details: `Company not found for companyId: ${companyId}`,
-    })
+  } else {
+    companyActive = false
   }
 
-  if (company.getString('status') !== 'active') {
-    $app.logger().warn('SSO verify failed: Company is inactive', 'companyId', companyId)
-    return e.json(403, {
-      status: 403,
-      message: 'Company account is inactive or blocked',
-      error_details: `Company status is ${company.getString('status')} for companyId: ${companyId}`,
-    })
-  }
+  const isFullyActive = isActive && companyActive
 
-  $app.logger().info('SSO token verified successfully', 'userId', user.id)
+  $app
+    .logger()
+    .info(
+      'SSO token verified successfully',
+      'userId',
+      user.id,
+      'status_token',
+      isFullyActive ? 'active' : 'inactive',
+    )
 
   const hubUserId = user.getString('hub_user_id') || user.id
 
   return e.json(200, {
     id: hubUserId,
-    status: 'success',
+    status_token: isFullyActive ? 'active' : 'inactive',
   })
 })
