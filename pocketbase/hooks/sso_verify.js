@@ -30,19 +30,19 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
     return e.unauthorizedError('Invalid or expired token')
   }
 
-  if (!payload || (!payload.id && !payload.user_hub_id)) {
+  if (!payload || (!payload.id && !payload.user_hub_id && !payload.hub_user_id)) {
     $app.logger().error('SSO verify failed: Token payload missing id or user_hub_id')
     return e.unauthorizedError('Invalid token payload')
   }
 
-  const searchId = payload.id || payload.user_hub_id
+  const searchId = payload.hub_user_id || payload.user_hub_id || payload.id
 
   let user
   try {
-    user = $app.findRecordById('users', searchId)
+    user = $app.findFirstRecordByData('users', 'hub_user_id', searchId)
   } catch (err) {
-    $app.logger().error('SSO verify failed: User not found', 'userId', searchId)
-    return e.unauthorizedError('User not found')
+    $app.logger().error('SSO verify failed: User not found', 'searchId', searchId)
+    return e.json(404, { error: 'Usuário não localizado no CRM.' })
   }
 
   if (user.getBool('active') === false) {

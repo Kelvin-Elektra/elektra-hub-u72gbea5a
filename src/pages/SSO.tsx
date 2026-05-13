@@ -41,10 +41,20 @@ export default function SSO() {
         } else {
           throw new Error('Resposta de autenticação inválida')
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('SSO Error:', err)
-        setError(getErrorMessage(err))
-        toast.error('Sessão expirada ou inválida. Faça login novamente.')
+
+        let displayError = 'Sessão expirada ou inválida. Faça login novamente.'
+
+        if (err?.response?.error) {
+          displayError = err.response.error
+          setError(displayError)
+          toast.error(displayError)
+        } else {
+          setError(getErrorMessage(err))
+          toast.error(displayError)
+        }
+
         pb.authStore.clear()
 
         setTimeout(() => {
