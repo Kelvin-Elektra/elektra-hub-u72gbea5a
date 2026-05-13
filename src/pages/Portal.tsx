@@ -62,6 +62,9 @@ export default function Portal() {
         const verifyData = await verifyResponse.json().catch(() => ({}))
 
         if (!verifyResponse.ok) {
+          if (verifyData.error_details) {
+            console.error('SSO Verification Error Details:', verifyData.error_details)
+          }
           throw new Error(verifyData.message || 'Token verification failed')
         }
 
