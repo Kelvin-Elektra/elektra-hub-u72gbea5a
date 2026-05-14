@@ -288,15 +288,41 @@ export default function Portal() {
     )
   }
 
+  const [isGeneratingCrmToken, setIsGeneratingCrmToken] = useState(false)
+
+  const handleOpenCRM = async () => {
+    try {
+      setIsGeneratingCrmToken(true)
+      const res = await pb.send('/backend/v1/sso-generate', { method: 'POST' })
+      const url = new URL('https://crm.elektrasolucoes.tech/login')
+      url.searchParams.set('sso_token', res.token)
+      window.location.href = url.toString()
+    } catch (err) {
+      toast.error('Erro ao gerar token para o CRM.')
+    } finally {
+      setIsGeneratingCrmToken(false)
+    }
+  }
+
   if (!user) return null
 
   return (
     <div className="space-y-6 relative pb-20">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Módulos Disponíveis</h1>
-        <p className="text-muted-foreground">
-          Explore e ative novas funcionalidades para sua conta.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Módulos Disponíveis</h1>
+          <p className="text-muted-foreground">
+            Explore e ative novas funcionalidades para sua conta.
+          </p>
+        </div>
+        <Button onClick={handleOpenCRM} disabled={isGeneratingCrmToken} className="gap-2">
+          {isGeneratingCrmToken ? (
+            <div className="h-4 w-4 border-2 border-current border-t-transparent animate-spin rounded-full" />
+          ) : (
+            <ExternalLink className="h-4 w-4" />
+          )}
+          {isGeneratingCrmToken ? 'Redirecionando...' : 'Abrir CRM'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
