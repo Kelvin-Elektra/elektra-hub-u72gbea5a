@@ -267,17 +267,11 @@ export default function Portal() {
       const res = await pb.send('/backend/v1/sso-generate', { method: 'POST' })
       const url = new URL(mod.access_url || 'https://example.com')
       url.searchParams.set('sso_token', res.token)
-      url.searchParams.set(
-        'sso_verify_url',
-        `${import.meta.env.VITE_POCKETBASE_URL}/api/backend/v1/sso-verify`,
-      )
       window.open(url.toString(), '_blank')
     } catch (err) {
-      toast.error('Erro ao gerar token de acesso.')
+      toast.error('Acesso ao módulo não autorizado. Erro ao gerar token de acesso.')
     }
   }
-
-  const [isGeneratingCrmToken, setIsGeneratingCrmToken] = useState(false)
 
   if (isVerifyingSSO) {
     return (
@@ -288,20 +282,6 @@ export default function Portal() {
         </div>
       </div>
     )
-  }
-
-  const handleOpenCRM = async () => {
-    try {
-      setIsGeneratingCrmToken(true)
-      const res = await pb.send('/backend/v1/sso-generate', { method: 'POST' })
-      const url = new URL('https://crm.elektrasolucoes.tech/login')
-      url.searchParams.set('sso_token', res.token)
-      window.location.href = url.toString()
-    } catch (err) {
-      toast.error('Erro ao gerar token para o CRM.')
-    } finally {
-      setIsGeneratingCrmToken(false)
-    }
   }
 
   if (!user) return null
@@ -315,14 +295,6 @@ export default function Portal() {
             Explore e ative novas funcionalidades para sua conta.
           </p>
         </div>
-        <Button onClick={handleOpenCRM} disabled={isGeneratingCrmToken} className="gap-2">
-          {isGeneratingCrmToken ? (
-            <div className="h-4 w-4 border-2 border-current border-t-transparent animate-spin rounded-full" />
-          ) : (
-            <ExternalLink className="h-4 w-4" />
-          )}
-          {isGeneratingCrmToken ? 'Redirecionando...' : 'Abrir CRM'}
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
