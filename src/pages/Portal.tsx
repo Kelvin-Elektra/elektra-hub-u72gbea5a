@@ -277,6 +277,8 @@ export default function Portal() {
     }
   }
 
+  const [isGeneratingCrmToken, setIsGeneratingCrmToken] = useState(false)
+
   if (isVerifyingSSO) {
     return (
       <div className="flex items-center justify-center h-full min-h-[50vh]">
@@ -287,8 +289,6 @@ export default function Portal() {
       </div>
     )
   }
-
-  const [isGeneratingCrmToken, setIsGeneratingCrmToken] = useState(false)
 
   const handleOpenCRM = async () => {
     try {
