@@ -228,11 +228,18 @@ export default function Auth() {
               state,
             })
           } catch (userErr: any) {
-            if (companyRecord && companyRecord.id) {
+            if (
+              companyRecord &&
+              typeof companyRecord.id === 'string' &&
+              companyRecord.id.trim() !== ''
+            ) {
               try {
                 await pb.collection('companies').delete(companyRecord.id)
               } catch (deleteErr: any) {
-                if (deleteErr?.status !== 404) {
+                if (deleteErr?.status === 404) {
+                  // Silently handle 404 when the record doesn't exist to prevent crash
+                  console.info('Rollback: Company record not found (404), continuing gracefully.')
+                } else {
                   console.error('Failed to rollback company:', deleteErr)
                 }
               }
