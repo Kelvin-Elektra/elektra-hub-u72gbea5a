@@ -228,10 +228,15 @@ export default function Auth() {
               state,
             })
           } catch (userErr: any) {
-            await pb
-              .collection('companies')
-              .delete(companyRecord.id)
-              .catch(() => {})
+            if (companyRecord && companyRecord.id) {
+              try {
+                await pb.collection('companies').delete(companyRecord.id)
+              } catch (deleteErr: any) {
+                if (deleteErr?.status !== 404) {
+                  console.error('Failed to rollback company:', deleteErr)
+                }
+              }
+            }
             throw userErr
           }
         } catch (err: any) {
