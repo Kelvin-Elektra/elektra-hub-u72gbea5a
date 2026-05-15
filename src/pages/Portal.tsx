@@ -123,7 +123,7 @@ export default function Portal() {
   const loadData = async () => {
     if (!user) return
     try {
-      const isOwner = user.is_owner !== false
+      const isOwner = user.role === 'User_owner'
 
       const [mods, subs, access] = await Promise.all([
         getModules(),
@@ -264,7 +264,11 @@ export default function Portal() {
 
   const handleAccess = async (mod: Module) => {
     try {
-      const res = await pb.send('/backend/v1/sso-generate', { method: 'POST' })
+      const res = await pb.send('/backend/v1/sso-generate', {
+        method: 'POST',
+        body: JSON.stringify({ module_id: mod.id }),
+        headers: { 'Content-Type': 'application/json' },
+      })
       const url = new URL(mod.access_url || 'https://example.com')
       url.searchParams.set('sso_token', res.token)
       window.open(url.toString(), '_blank')
@@ -365,7 +369,7 @@ export default function Portal() {
                   <Button variant="outline" className="w-full" onClick={() => handleAccess(mod)}>
                     Acessar Módulo <ExternalLink className="h-4 w-4 ml-2" />
                   </Button>
-                ) : user.is_owner !== false ? (
+                ) : user.role === 'User_owner' ? (
                   <Button
                     className="w-full"
                     variant={inCart ? 'secondary' : 'default'}

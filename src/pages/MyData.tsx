@@ -19,6 +19,7 @@ export default function MyData() {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
+    phone: '',
     company_name: '',
     tax_id: '',
     postal_code: '',
@@ -34,6 +35,7 @@ export default function MyData() {
     if (user) {
       setFormData({
         name: user.name || '',
+        phone: user.phone || '',
         company_name: user.company_name || '',
         tax_id: user.tax_id || '',
         postal_code: user.postal_code || '',
@@ -83,6 +85,10 @@ export default function MyData() {
               <div className="space-y-2">
                 <Label htmlFor="name">Nome Completo</Label>
                 <Input id="name" value={formData.name} onChange={handleChange} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone / Celular</Label>
+                <Input id="phone" value={formData.phone} onChange={handleChange} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="company_name">Nome da Empresa</Label>

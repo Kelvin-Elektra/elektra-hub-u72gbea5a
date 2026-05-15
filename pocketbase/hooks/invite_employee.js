@@ -6,7 +6,7 @@ routerAdd(
     const auth = e.auth
 
     if (!auth) return e.unauthorizedError('Não autorizado')
-    if (!auth.getBool('is_owner'))
+    if (auth.getString('role') !== 'User_owner')
       return e.forbiddenError('Apenas o proprietário pode convidar funcionários.')
 
     const companyId = auth.getString('company_id')
@@ -14,6 +14,7 @@ routerAdd(
 
     const email = body.email
     const name = body.name
+    const phone = body.phone || ''
 
     if (!email || !name) return e.badRequestError('Nome e e-mail são obrigatórios.')
 
@@ -26,13 +27,12 @@ routerAdd(
 
       const record = new Record(usersCol)
       record.setEmail(email)
-      // Temporary password (they will change it via the verify link)
       const tempPass = $security.randomString(12) + 'A1!'
       record.setPassword(tempPass)
       record.set('name', name)
+      record.set('phone', phone)
       record.set('company_id', companyId)
-      record.set('is_owner', false)
-      record.set('role', 'User')
+      record.set('role', 'User_employee')
       record.set('active', false)
 
       $app.save(record)

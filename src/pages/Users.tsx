@@ -38,7 +38,7 @@ export default function Users() {
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [formData, setFormData] = useState<any>({ role: 'User' })
+  const [formData, setFormData] = useState<any>({ role: 'User_owner' })
   const [loading, setLoading] = useState(false)
   const [deactivateConfirmId, setDeactivateConfirmId] = useState<string | null>(null)
   const [tab, setTab] = useState('active')
@@ -84,7 +84,7 @@ export default function Users() {
       await pb.collection('users').create(dataToSubmit)
       toast.success('Usuário criado com sucesso.')
       setIsOpen(false)
-      setFormData({ role: 'User' })
+      setFormData({ role: 'User_owner' })
       loadData()
     } catch (e) {
       toast.error(getErrorMessage(e))
@@ -173,7 +173,7 @@ export default function Users() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.role === 'Admin' ? 'default' : 'outline'}>
-                      {user.role || 'User'}
+                      {user.role || 'User_employee'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -258,19 +258,29 @@ export default function Users() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Admin">Administrador</SelectItem>
-                    <SelectItem value="User">Cliente (User)</SelectItem>
+                    <SelectItem value="User_owner">Proprietário (User_owner)</SelectItem>
+                    <SelectItem value="User_employee">Funcionário (User_employee)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={formData.email || ''}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email || ''}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone</Label>
+                <Input
+                  value={formData.phone || ''}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

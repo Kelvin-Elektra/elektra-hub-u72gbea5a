@@ -91,35 +91,37 @@ export default function PortalLayout() {
               <LayoutGrid className="h-4 w-4" />
               Módulos
             </NavLink>
-            <NavLink
-              to="/cliente/assinaturas"
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
-                  isActive
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
-                )
-              }
-            >
-              <FileText className="h-4 w-4" />
-              Assinaturas
-            </NavLink>
-            {user?.is_owner !== false && (
-              <NavLink
-                to="/cliente/equipe"
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
-                    isActive
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
-                  )
-                }
-              >
-                <Users className="h-4 w-4" />
-                Equipe
-              </NavLink>
+            {user?.role === 'User_owner' && (
+              <>
+                <NavLink
+                  to="/cliente/assinaturas"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
+                      isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+                    )
+                  }
+                >
+                  <FileText className="h-4 w-4" />
+                  Assinaturas
+                </NavLink>
+                <NavLink
+                  to="/cliente/equipe"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors',
+                      isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+                    )
+                  }
+                >
+                  <Users className="h-4 w-4" />
+                  Equipe
+                </NavLink>
+              </>
             )}
             <NavLink
               to="/cliente/meus-dados"

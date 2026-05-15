@@ -36,6 +36,7 @@ export default function Team() {
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePhone, setInvitePhone] = useState('')
   const [isInviting, setIsInviting] = useState(false)
 
   const [manageUser, setManageUser] = useState<any>(null)
@@ -46,7 +47,7 @@ export default function Team() {
       const [emps, mods, subs, access] = await Promise.all([
         pb
           .collection('users')
-          .getFullList({ filter: `company_id = "${user.company_id}" && is_owner = false` }),
+          .getFullList({ filter: `company_id = "${user.company_id}" && role = "User_employee"` }),
         pb.collection('modules').getFullList({ filter: 'status = "active"' }),
         pb
           .collection('subscriptions')
@@ -74,12 +75,13 @@ export default function Team() {
     try {
       await pb.send('/backend/v1/invite-employee', {
         method: 'POST',
-        body: JSON.stringify({ name: inviteName, email: inviteEmail }),
+        body: JSON.stringify({ name: inviteName, email: inviteEmail, phone: invitePhone }),
       })
       toast.success('Convite enviado com sucesso!')
       setIsInviteOpen(false)
       setInviteName('')
       setInviteEmail('')
+      setInvitePhone('')
       loadData()
     } catch (err: any) {
       toast.error(err.response?.message || 'Erro ao enviar convite.')
@@ -111,13 +113,24 @@ export default function Team() {
           await pb.collection('employee_access').delete(accessRecord.id)
         }
       } else {
-        // Grant access
+        // Grant access (default to 'user' role_company)
         await pb.collection('employee_access').create({
           employee_id: manageUser.id,
           module_id: moduleId,
           company_id: user?.company_id,
+          role_company: 'user',
         })
       }
+      loadData()
+    } catch (err) {
+      toast.error('Erro ao atualizar permissão.')
+    }
+  }
+
+  const updateRoleCompany = async (accessId: string, roleCompany: string) => {
+    try {
+      await pb.collection('employee_access').update(accessId, { role_company: roleCompany })
+      toast.success('Permissão atualizada.')
       loadData()
     } catch (err) {
       toast.error('Erro ao atualizar permissão.')
@@ -230,6 +243,10 @@ export default function Team() {
                   onChange={(e) => setInviteEmail(e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Telefone (Opcional)</Label>
+                <Input value={invitePhone} onChange={(e) => setInvitePhone(e.target.value)} />
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsInviteOpen(false)}>
@@ -266,21 +283,37 @@ export default function Team() {
                   (a) => a.employee_id === manageUser?.id && a.module_id === mod.id,
                 )
 
+                const accessRecord = employeeAccess.find(
+                  (a) => a.employee_id === manageUser?.id && a.module_id === mod.id,
+                )
+
                 return (
-                  <div
-                    key={sub.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium">{mod.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {mod.description || 'Acesso ao módulo'}
-                      </p>
+                  <div key={sub.id} className="flex flex-col gap-3 p-3 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{mod.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {mod.description || 'Acesso ao módulo'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={hasAccess}
+                        onCheckedChange={() => toggleAccess(mod.id, hasAccess)}
+                      />
                     </div>
-                    <Switch
-                      checked={hasAccess}
-                      onCheckedChange={() => toggleAccess(mod.id, hasAccess)}
-                    />
+                    {hasAccess && accessRecord && (
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <Label className="text-sm">Nível de Permissão</Label>
+                        <select
+                          className="flex h-9 w-[130px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          value={accessRecord.role_company || 'user'}
+                          onChange={(e) => updateRoleCompany(accessRecord.id, e.target.value)}
+                        >
+                          <option value="user">Usuário</option>
+                          <option value="admin">Administrador</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                 )
               })

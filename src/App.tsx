@@ -84,12 +84,14 @@ const App = () => (
             <Route path="/unverified" element={<Unverified />} />
           </Route>
 
-          <Route element={<RequireAuth allowedRoles={['User']} />}>
+          <Route element={<RequireAuth allowedRoles={['User_owner', 'User_employee']} />}>
             <Route element={<PortalLayout />}>
               <Route path="/cliente" element={<Portal />} />
-              <Route path="/cliente/assinaturas" element={<PortalSubscriptions />} />
-              <Route path="/cliente/equipe" element={<Team />} />
               <Route path="/cliente/meus-dados" element={<MyData />} />
+              <Route element={<RequireAuth allowedRoles={['User_owner']} />}>
+                <Route path="/cliente/assinaturas" element={<PortalSubscriptions />} />
+                <Route path="/cliente/equipe" element={<Team />} />
+              </Route>
             </Route>
           </Route>
 

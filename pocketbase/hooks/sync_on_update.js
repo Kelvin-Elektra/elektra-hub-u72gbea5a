@@ -15,6 +15,13 @@ onRecordAfterUpdateSuccess((e) => {
     return e.next()
   }
 
+  let user
+  try {
+    user = $app.findRecordById('users', sub.getString('user_id'))
+  } catch (_) {
+    return e.next()
+  }
+
   let endpoint = mod.getString('endpoint_url')
   const secretName = mod.getString('secret_key_name')
 
@@ -26,44 +33,50 @@ onRecordAfterUpdateSuccess((e) => {
   let status = 'success'
   let errorMessage = ''
 
-  let user
-  try {
-    user = $app.findRecordById('users', sub.getString('user_id'))
-  } catch (_) {
-    return e.next()
-  }
-
-  let payload = {}
-  const isCrm = mod.getString('name').toUpperCase().includes('CRM')
   const statusSub = sub.getString('status')
-
   let mappedStatus = statusSub
   if (statusSub === 'active' || statusSub === 'trialing') {
     mappedStatus = 'active'
-  } else if (statusSub === 'canceled' || statusSub === 'overdue') {
+  } else {
     mappedStatus = 'inactive'
   }
 
-  if (isCrm) {
-    payload = {
-      action: 'update_status',
-      hub_user_id: user.id,
-      hub_company_id: user.getString('company_id'),
+  let hubCompanyId = user.getString('company_id')
+  let companyName = user.getString('company_name')
+
+  if (hubCompanyId) {
+    try {
+      const comp = $app.findRecordById('companies', hubCompanyId)
+      if (comp.getString('hub_company_id')) {
+        hubCompanyId = comp.getString('hub_company_id')
+      }
+      companyName = comp.getString('name') || companyName
+    } catch (_) {}
+  }
+
+  const payload = {
+    action: 'sync',
+    user: {
+      id: user.id,
+      name: user.getString('name'),
+      email: user.getString('email'),
+      phone: user.getString('phone'),
+      role: user.getString('role'),
+    },
+    company: {
+      company_id: user.getString('company_id'),
+      company_name: companyName,
+      hub_company_id: hubCompanyId,
       status: mappedStatus,
-      max_users: sub.getInt('max_users') || 1,
-    }
-  } else {
-    payload = {
-      subscription_id: sub.id,
-      hub_user_id: user.id,
-      hub_company_id: user.getString('company_id'),
-      user_id: user.id,
-      company_name: user.getString('company_name'),
-      tax_id: user.getString('tax_id'),
+    },
+    access: {
+      role_company: 'admin',
+    },
+    subscription: {
+      id: sub.id,
       status: statusSub,
-      module_slug: mod.getString('name'),
       max_users: sub.getInt('max_users') || 1,
-    }
+    },
   }
 
   try {
@@ -84,20 +97,18 @@ onRecordAfterUpdateSuccess((e) => {
         responseText = JSON.stringify(res.json)
       } else if (res.body) {
         responseText = new TextDecoder().decode(res.body)
-      } else {
-        responseText = 'Sem resposta JSON ou corpo vazio.'
       }
     } catch (_) {}
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       status = 'failed'
-      errorMessage = `HTTP ${res.statusCode} | Method: POST | URL: ${endpoint} | Payload: ${JSON.stringify(payload)} | Response: ${responseText}`
+      errorMessage = `HTTP ${res.statusCode} | Response: ${responseText}`
     } else {
       errorMessage = `HTTP ${res.statusCode} OK`
     }
   } catch (err) {
     status = 'failed'
-    errorMessage = `Erro: ${err.message || String(err)} | Method: POST | URL: ${endpoint} | Payload: ${JSON.stringify(payload)}`
+    errorMessage = `Erro: ${err.message || String(err)}`
   }
 
   try {
