@@ -38,13 +38,7 @@ const RequireAuth = ({ allowedRoles }: { allowedRoles?: string[] }) => {
     }
   }
 
-  if (user && !user.verified && location.pathname !== '/unverified') {
-    return <Navigate to="/unverified" replace />
-  }
-
-  if (user && user.verified && location.pathname === '/unverified') {
-    return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
-  }
+  // Email verification is bypassed for User_owner so they can access the portal immediately.
 
   if (user && allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />

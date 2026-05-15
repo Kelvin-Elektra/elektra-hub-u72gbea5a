@@ -36,15 +36,12 @@ onRecordAfterCreateSuccess((e) => {
     mappedStatus = 'inactive'
   }
 
-  let hubCompanyId = user.getString('company_id')
+  let companyId = user.getString('company_id')
   let companyName = user.getString('company_name')
 
-  if (hubCompanyId) {
+  if (companyId) {
     try {
-      const comp = $app.findRecordById('companies', hubCompanyId)
-      if (comp.getString('hub_company_id')) {
-        hubCompanyId = comp.getString('hub_company_id')
-      }
+      const comp = $app.findRecordById('companies', companyId)
       companyName = comp.getString('name') || companyName
     } catch (_) {}
   }
@@ -53,15 +50,16 @@ onRecordAfterCreateSuccess((e) => {
     action: 'sync',
     user: {
       id: user.id,
+      company_id: companyId,
       name: user.getString('name'),
       email: user.getString('email'),
       phone: user.getString('phone'),
       role: user.getString('role'),
+      company_name: companyName,
     },
     company: {
-      company_id: user.getString('company_id'),
+      company_id: companyId,
       company_name: companyName,
-      hub_company_id: hubCompanyId,
       status: mappedStatus,
     },
     access: {

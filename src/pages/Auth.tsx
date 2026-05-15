@@ -30,6 +30,7 @@ export default function Auth() {
 
   const [personType, setPersonType] = useState<'PF' | 'PJ'>('PJ')
   const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
   const [taxId, setTaxId] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [postalCode, setPostalCode] = useState('')
@@ -118,23 +119,40 @@ export default function Auth() {
         }
 
         try {
-          await pb.collection('users').create({
-            email,
-            password,
-            passwordConfirm: password,
-            name,
-            role: 'User',
-            person_type: personType,
+          const companyRecord = await pb.collection('companies').create({
+            name: companyName || name,
+            status: 'active',
             tax_id: taxId.replace(/\D/g, ''),
-            company_name: companyName,
-            postal_code: postalCode,
-            address,
-            address_number: addressNumber,
-            complement,
-            neighborhood,
-            city,
-            state,
           })
+
+          try {
+            await pb.collection('users').create({
+              email,
+              password,
+              passwordConfirm: password,
+              name,
+              phone,
+              role: 'User_owner',
+              person_type: personType,
+              tax_id: taxId.replace(/\D/g, ''),
+              company_name: companyName,
+              company_id: companyRecord.id,
+              active: true,
+              postal_code: postalCode,
+              address,
+              address_number: addressNumber,
+              complement,
+              neighborhood,
+              city,
+              state,
+            })
+          } catch (userErr: any) {
+            await pb
+              .collection('companies')
+              .delete(companyRecord.id)
+              .catch(() => {})
+            throw userErr
+          }
         } catch (err: any) {
           if (
             err.response?.data?.email?.code === 'validation_not_unique' ||
@@ -145,10 +163,12 @@ export default function Auth() {
           throw err
         }
 
-        toast.success('Cadastro realizado! Verifique seu e-mail para confirmar a conta.')
+        toast.success('Cadastro realizado com sucesso!')
 
         const { error: signInError } = await signIn(email, password)
         if (signInError) throw signInError
+
+        navigate('/cliente')
       }
     } catch (err: any) {
       const extractedErrors = extractFieldErrors(err)
@@ -260,6 +280,20 @@ export default function Auth() {
                     />
                     {fieldErrors.tax_id && (
                       <p className="text-xs text-destructive">{fieldErrors.tax_id}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone (Celular)</Label>
+                    <Input
+                      id="phone"
+                      placeholder="(00) 00000-0000"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required={!isLogin}
+                      className={fieldErrors.phone ? 'border-destructive' : ''}
+                    />
+                    {fieldErrors.phone && (
+                      <p className="text-xs text-destructive">{fieldErrors.phone}</p>
                     )}
                   </div>
                   <div className="space-y-2">

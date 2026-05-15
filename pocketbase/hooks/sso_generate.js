@@ -17,20 +17,17 @@ routerAdd(
       return e.internalServerError('SSO configuration error')
     }
 
-    let hubCompanyId = user.getString('company_id')
+    let companyId = user.getString('company_id')
     let companyName = user.getString('company_name')
 
-    if (hubCompanyId) {
+    if (companyId) {
       try {
-        const company = $app.findRecordById('companies', hubCompanyId)
-        if (company.getString('hub_company_id')) {
-          hubCompanyId = company.getString('hub_company_id')
-        }
+        const company = $app.findRecordById('companies', companyId)
         if (company.getString('name')) {
           companyName = company.getString('name')
         }
       } catch (err) {
-        $app.logger().warn('SSO generate: Company not found', 'companyId', hubCompanyId)
+        $app.logger().warn('SSO generate: Company not found', 'companyId', companyId)
       }
     }
 
@@ -60,10 +57,9 @@ routerAdd(
           email: user.getString('email'),
           phone: user.getString('phone'),
           role: user.getString('role'),
-          hub_company_id: hubCompanyId,
+          company_id: companyId,
           role_company: roleCompany,
-          user_hub_id: user.id,
-          company_hub_id: hubCompanyId,
+          company_name: companyName,
         },
         secret,
         3600,

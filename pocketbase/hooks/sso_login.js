@@ -33,21 +33,17 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
     return unauthorizedResponse('Token inválido')
   }
 
-  if (!payload || (!payload.id && !payload.user_hub_id && !payload.hub_user_id)) {
+  if (!payload || !payload.id) {
     return unauthorizedResponse('Payload inválido')
   }
 
-  const searchId = payload.hub_user_id || payload.user_hub_id || payload.id
+  const searchId = payload.id
 
   let user
   try {
-    user = $app.findFirstRecordByData('users', 'hub_user_id', searchId)
+    user = $app.findRecordById('users', searchId)
   } catch (err) {
-    try {
-      user = $app.findRecordById('users', searchId)
-    } catch (err2) {
-      return notFoundResponse()
-    }
+    return notFoundResponse()
   }
 
   if (user.getBool('active') === false) {
