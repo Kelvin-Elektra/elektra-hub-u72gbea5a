@@ -5,7 +5,6 @@ onRecordCreateRequest((e) => {
   if (!e.hasSuperuserAuth() && (!e.auth || e.auth.getString('role') !== 'Admin')) {
     if (record.getString('role') === 'User_owner') {
       record.set('active', true)
-      record.setVerified(true)
     } else {
       record.set('active', false)
     }
