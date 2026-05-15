@@ -200,11 +200,17 @@ export default function Auth() {
         if (signInError) throw signInError
       } else {
         try {
-          const companyRecord = await pb.collection('companies').create({
-            name: companyName || name,
-            status: 'active',
-            tax_id: taxId.replace(/\D/g, ''),
-          })
+          let companyRecord: any = null
+          try {
+            companyRecord = await pb.collection('companies').create({
+              name: companyName || name,
+              status: 'active',
+              tax_id: taxId.replace(/\D/g, ''),
+            })
+          } catch (companyErr: any) {
+            console.error('Company Creation failed:', companyErr)
+            throw companyErr
+          }
 
           try {
             await pb.collection('users').create({
@@ -214,6 +220,7 @@ export default function Auth() {
               name,
               phone,
               role: 'User_owner',
+              is_owner: true,
               person_type: personType,
               tax_id: taxId.replace(/\D/g, ''),
               company_name: companyName,
@@ -228,6 +235,7 @@ export default function Auth() {
               state,
             })
           } catch (userErr: any) {
+            console.error('User Creation failed:', userErr)
             if (
               companyRecord &&
               typeof companyRecord.id === 'string' &&

@@ -5,11 +5,14 @@ onRecordAfterCreateSuccess((e) => {
   if (!email) return e.next()
 
   const secret = $secrets.get('PB_SUPERUSER_TOKEN') || 'my-secret'
-  const token = $security.createJWT(
-    { id: user.id, is_owner: user.getBool('is_owner') },
-    secret,
-    86400,
-  ) // 24h
+  let isOwner = false
+  try {
+    isOwner = user.getBool('is_owner')
+  } catch (err) {
+    $app.logger().warn('Failed to read is_owner field, defaulting to false')
+  }
+
+  const token = $security.createJWT({ id: user.id, is_owner: isOwner }, secret, 86400) // 24h
 
   const frontendUrl = 'https://hub.elektrasolucoes.tech'
   const verifyLink = `${frontendUrl}/verify?token=${token}`
@@ -22,7 +25,7 @@ onRecordAfterCreateSuccess((e) => {
 
   let htmlContent = `<p>Olá,</p><p>Bem-vindo ao Elektra HUB! Clique no link abaixo para verificar seu email e ativar sua conta:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
 
-  if (!user.getBool('is_owner')) {
+  if (!isOwner) {
     htmlContent = `<p>Olá,</p><p>Você foi convidado para participar da equipe no Elektra HUB! Clique no link abaixo para ativar sua conta e definir sua senha de acesso:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
   }
 
