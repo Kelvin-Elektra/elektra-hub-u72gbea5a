@@ -1,12 +1,12 @@
 migrate(
   (app) => {
     const users = app.findCollectionByNameOrId('users')
-    users.removeField('hub_user_id')
+    users.fields.removeByName('hub_user_id')
     users.removeIndex('idx_users_hub_user_id')
     app.save(users)
 
     const companies = app.findCollectionByNameOrId('companies')
-    companies.removeField('hub_company_id')
+    companies.fields.removeByName('hub_company_id')
     companies.removeIndex('idx_companies_hub_company_id')
     app.save(companies)
   },
