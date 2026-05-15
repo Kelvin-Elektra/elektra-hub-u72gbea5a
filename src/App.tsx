@@ -38,7 +38,9 @@ const RequireAuth = ({ allowedRoles }: { allowedRoles?: string[] }) => {
     }
   }
 
-  // Email verification is bypassed for User_owner so they can access the portal immediately.
+  if (user && !user.verified && location.pathname !== '/unverified') {
+    return <Navigate to="/unverified" replace />
+  }
 
   if (user && allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
@@ -58,6 +60,7 @@ const RootRedirect = () => {
   const { user, loading } = useAuth()
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
+  if (!user.verified) return <Navigate to="/unverified" replace />
   return <Navigate to={user.role === 'Admin' ? '/admin' : '/cliente'} replace />
 }
 

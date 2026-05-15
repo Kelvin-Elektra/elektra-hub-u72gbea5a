@@ -59,7 +59,11 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate(user.role === 'Admin' ? '/admin' : '/cliente')
+      if (!user.verified) {
+        navigate('/unverified')
+      } else {
+        navigate(user.role === 'Admin' ? '/admin' : '/cliente')
+      }
     }
   }, [user, navigate])
 
@@ -252,10 +256,16 @@ export default function Auth() {
 
         toast.success('Cadastro realizado com sucesso!')
 
+        try {
+          await pb.collection('users').requestVerification(email)
+        } catch (e) {
+          console.error('Failed to request verification email', e)
+        }
+
         const { error: signInError } = await signIn(email, password)
         if (signInError) throw signInError
 
-        navigate('/cliente')
+        navigate('/unverified')
       }
     } catch (err: any) {
       const extractedErrors = extractFieldErrors(err)
