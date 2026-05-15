@@ -96,28 +96,109 @@ export default function Auth() {
     setError('')
     setFieldErrors({})
 
+    let hasMissing = false
+    const newFieldErrors: Record<string, string> = {}
+
+    if (isLogin) {
+      if (!email) {
+        hasMissing = true
+        newFieldErrors.email = 'Obrigatório'
+      }
+      if (!password) {
+        hasMissing = true
+        newFieldErrors.password = 'Obrigatório'
+      }
+    } else {
+      if (!name) {
+        hasMissing = true
+        newFieldErrors.name = 'Obrigatório'
+      }
+      if (!companyName) {
+        hasMissing = true
+        newFieldErrors.company_name = 'Obrigatório'
+      }
+
+      if (!taxId) {
+        hasMissing = true
+        newFieldErrors.tax_id = 'Obrigatório'
+      } else {
+        const cleanTaxId = taxId.replace(/\D/g, '')
+        if (personType === 'PF' && cleanTaxId.length !== 11) {
+          hasMissing = true
+          newFieldErrors.tax_id = 'CPF inválido.'
+        }
+        if (personType === 'PJ' && cleanTaxId.length !== 14) {
+          hasMissing = true
+          newFieldErrors.tax_id = 'CNPJ inválido.'
+        }
+      }
+
+      if (!phone) {
+        hasMissing = true
+        newFieldErrors.phone = 'Obrigatório'
+      }
+
+      if (!email) {
+        hasMissing = true
+        newFieldErrors.email = 'Obrigatório'
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        hasMissing = true
+        newFieldErrors.email = 'E-mail inválido.'
+      }
+
+      if (!password) {
+        hasMissing = true
+        newFieldErrors.password = 'Obrigatório'
+      } else if (password.length < 8) {
+        hasMissing = true
+        newFieldErrors.password = 'Mínimo de 8 caracteres.'
+      }
+
+      if (!postalCode) {
+        hasMissing = true
+        newFieldErrors.postal_code = 'Obrigatório'
+      } else {
+        const cleanCep = postalCode.replace(/\D/g, '')
+        if (cleanCep.length !== 8) {
+          hasMissing = true
+          newFieldErrors.postal_code = 'CEP inválido.'
+        }
+      }
+
+      if (!address) {
+        hasMissing = true
+        newFieldErrors.address = 'Obrigatório'
+      }
+      if (!addressNumber) {
+        hasMissing = true
+        newFieldErrors.address_number = 'Obrigatório'
+      }
+      if (!neighborhood) {
+        hasMissing = true
+        newFieldErrors.neighborhood = 'Obrigatório'
+      }
+      if (!city) {
+        hasMissing = true
+        newFieldErrors.city = 'Obrigatório'
+      }
+      if (!state) {
+        hasMissing = true
+        newFieldErrors.state = 'Obrigatório'
+      }
+    }
+
+    if (hasMissing) {
+      setFieldErrors(newFieldErrors)
+      setError('Por favor, verifique os campos destacados.')
+      setLoading(false)
+      return
+    }
+
     try {
       if (isLogin) {
         const { error: signInError } = await signIn(email, password)
         if (signInError) throw signInError
       } else {
-        if (password.length < 8) {
-          throw new Error('A senha deve ter pelo menos 8 caracteres.')
-        }
-
-        const cleanTaxId = taxId.replace(/\D/g, '')
-        if (personType === 'PF' && cleanTaxId.length !== 11) {
-          throw new Error('CPF inválido. Deve conter 11 dígitos.')
-        }
-        if (personType === 'PJ' && cleanTaxId.length !== 14) {
-          throw new Error('CNPJ inválido. Deve conter 14 dígitos.')
-        }
-
-        const cleanCep = postalCode.replace(/\D/g, '')
-        if (cleanCep.length !== 8) {
-          throw new Error('CEP inválido. Deve conter 8 dígitos.')
-        }
-
         try {
           const companyRecord = await pb.collection('companies').create({
             name: companyName || name,
@@ -158,7 +239,9 @@ export default function Auth() {
             err.response?.data?.email?.code === 'validation_not_unique' ||
             err.response?.data?.email?.message?.includes('unique')
           ) {
-            throw new Error('Este e-mail já está cadastrado.')
+            if (err.response?.data?.email) {
+              err.response.data.email.message = 'Este e-mail já está cadastrado.'
+            }
           }
           throw err
         }
@@ -173,7 +256,7 @@ export default function Auth() {
     } catch (err: any) {
       const extractedErrors = extractFieldErrors(err)
       if (Object.keys(extractedErrors).length > 0) {
-        setFieldErrors(extractedErrors)
+        setFieldErrors((prev) => ({ ...prev, ...extractedErrors }))
         setError('Por favor, verifique os campos destacados.')
       } else {
         setError(getErrorMessage(err))
@@ -192,18 +275,20 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 py-12">
       <Card
-        className={`w-full ${isLogin ? 'max-w-md' : 'max-w-2xl'} bg-card border-border shadow-elevation`}
+        className={`w-full ${isLogin ? 'max-w-md' : 'max-w-2xl'} bg-card border-border shadow-md`}
       >
         <CardHeader className="space-y-2 text-center">
-          <div className="flex justify-center mb-4">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-12 max-w-[200px] object-contain" />
-            ) : (
-              <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center">
-                <Plug className="text-primary-foreground h-6 w-6" />
-              </div>
-            )}
-          </div>
+          {isLogin && (
+            <div className="flex justify-center mb-4">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-12 max-w-[200px] object-contain" />
+              ) : (
+                <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center">
+                  <Plug className="text-primary-foreground h-6 w-6" />
+                </div>
+              )}
+            </div>
+          )}
           <CardTitle className="text-2xl font-display text-foreground">
             {isLogin ? 'Bem-vindo de volta' : 'Crie sua conta'}
           </CardTitle>
@@ -212,7 +297,7 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {!isLogin && (
               <>
                 <div className="space-y-3 pb-2">
@@ -247,7 +332,6 @@ export default function Auth() {
                       placeholder="João Silva"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      required={!isLogin}
                       className={fieldErrors.name ? 'border-destructive' : ''}
                     />
                     {fieldErrors.name && (
@@ -261,7 +345,6 @@ export default function Auth() {
                       placeholder="Sua Empresa"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      required={!isLogin}
                       className={fieldErrors.company_name ? 'border-destructive' : ''}
                     />
                     {fieldErrors.company_name && (
@@ -275,7 +358,6 @@ export default function Auth() {
                       placeholder={personType === 'PJ' ? '00.000.000/0001-00' : '000.000.000-00'}
                       value={taxId}
                       onChange={(e) => setTaxId(formatTaxId(e.target.value))}
-                      required={!isLogin}
                       className={fieldErrors.tax_id ? 'border-destructive' : ''}
                     />
                     {fieldErrors.tax_id && (
@@ -289,7 +371,6 @@ export default function Auth() {
                       placeholder="(00) 00000-0000"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      required={!isLogin}
                       className={fieldErrors.phone ? 'border-destructive' : ''}
                     />
                     {fieldErrors.phone && (
@@ -304,7 +385,6 @@ export default function Auth() {
                       placeholder="usuario@exemplo.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      required
                       className={fieldErrors.email ? 'border-destructive' : ''}
                     />
                     {fieldErrors.email && (
@@ -319,8 +399,6 @@ export default function Auth() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={8}
                       className={fieldErrors.password ? 'border-destructive' : ''}
                     />
                     {fieldErrors.password && (
@@ -339,7 +417,6 @@ export default function Auth() {
                         placeholder="00000-000"
                         value={postalCode}
                         onChange={(e) => handleCepChange(e.target.value)}
-                        required={!isLogin}
                         maxLength={9}
                         className={fieldErrors.postal_code ? 'border-destructive' : ''}
                       />
@@ -354,7 +431,6 @@ export default function Auth() {
                         placeholder="Rua Exemplo"
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
-                        required={!isLogin}
                         className={fieldErrors.address ? 'border-destructive' : ''}
                       />
                       {fieldErrors.address && (
@@ -368,7 +444,6 @@ export default function Auth() {
                         placeholder="123"
                         value={addressNumber}
                         onChange={(e) => setAddressNumber(e.target.value)}
-                        required={!isLogin}
                         className={fieldErrors.address_number ? 'border-destructive' : ''}
                       />
                       {fieldErrors.address_number && (
@@ -395,7 +470,6 @@ export default function Auth() {
                         placeholder="Centro"
                         value={neighborhood}
                         onChange={(e) => setNeighborhood(e.target.value)}
-                        required={!isLogin}
                         className={fieldErrors.neighborhood ? 'border-destructive' : ''}
                       />
                       {fieldErrors.neighborhood && (
@@ -409,7 +483,6 @@ export default function Auth() {
                         placeholder="São Paulo"
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
-                        required={!isLogin}
                         className={fieldErrors.city ? 'border-destructive' : ''}
                       />
                       {fieldErrors.city && (
@@ -423,7 +496,6 @@ export default function Auth() {
                         placeholder="SP"
                         value={state}
                         onChange={(e) => setState(e.target.value)}
-                        required={!isLogin}
                         maxLength={2}
                         className={fieldErrors.state ? 'border-destructive' : ''}
                       />
@@ -446,8 +518,11 @@ export default function Auth() {
                     placeholder="usuario@exemplo.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
+                    className={fieldErrors.email ? 'border-destructive' : ''}
                   />
+                  {fieldErrors.email && (
+                    <p className="text-xs text-destructive">{fieldErrors.email}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
@@ -457,9 +532,11 @@ export default function Auth() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
+                    className={fieldErrors.password ? 'border-destructive' : ''}
                   />
+                  {fieldErrors.password && (
+                    <p className="text-xs text-destructive">{fieldErrors.password}</p>
+                  )}
                 </div>
               </>
             )}
