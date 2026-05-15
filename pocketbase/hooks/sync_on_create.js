@@ -23,54 +23,88 @@ onRecordAfterCreateSuccess((e) => {
   if (!endpoint) return e.next()
 
   endpoint = endpoint.replace('/api/backend/v1/', '/backend/v1/')
-
   const secret = secretName ? $secrets.get(secretName) : ''
-  let status = 'success'
-  let errorMessage = ''
-
-  const statusSub = sub.getString('status')
-  let mappedStatus = statusSub
-  if (statusSub === 'active' || statusSub === 'trialing') {
-    mappedStatus = 'active'
-  } else {
-    mappedStatus = 'inactive'
-  }
 
   let companyId = user.getString('company_id')
-  let companyName = user.getString('company_name')
-
+  let company = null
   if (companyId) {
     try {
-      const comp = $app.findRecordById('companies', companyId)
-      companyName = comp.getString('name') || companyName
+      company = $app.findRecordById('companies', companyId)
     } catch (_) {}
+  }
+
+  let roleCompany = 'user'
+  if (user.getString('role') === 'User_owner') {
+    roleCompany = 'admin'
+  } else {
+    try {
+      const access = $app.findFirstRecordByFilter(
+        'employee_access',
+        'employee_id = {:userId} && module_id = {:moduleId}',
+        {
+          userId: user.id,
+          moduleId: mod.id,
+        },
+      )
+      roleCompany = access.getString('role_company') || 'user'
+    } catch (_) {}
+  }
+
+  const exportUser = (rec) => ({
+    id: rec.id,
+    created: rec.getString('created'),
+    updated: rec.getString('updated'),
+    email: rec.getString('email'),
+    name: rec.getString('name'),
+    avatar: rec.getString('avatar'),
+    role: rec.getString('role'),
+    person_type: rec.getString('person_type'),
+    tax_id: rec.getString('tax_id'),
+    company_name: rec.getString('company_name'),
+    postal_code: rec.getString('postal_code'),
+    address: rec.getString('address'),
+    address_number: rec.getString('address_number'),
+    complement: rec.getString('complement'),
+    neighborhood: rec.getString('neighborhood'),
+    city: rec.getString('city'),
+    state: rec.getString('state'),
+    active: rec.getBool('active'),
+    company_id: rec.getString('company_id'),
+    phone: rec.getString('phone'),
+  })
+
+  const exportCompany = (rec) => {
+    if (!rec) return null
+    return {
+      id: rec.id,
+      created: rec.getString('created'),
+      updated: rec.getString('updated'),
+      name: rec.getString('name'),
+      tax_id: rec.getString('tax_id'),
+      status: rec.getString('status'),
+    }
   }
 
   const payload = {
     action: 'sync',
-    user: {
-      id: user.id,
-      company_id: companyId,
-      name: user.getString('name'),
-      email: user.getString('email'),
-      phone: user.getString('phone'),
-      role: user.getString('role'),
-      company_name: companyName,
-    },
-    company: {
-      company_id: companyId,
-      company_name: companyName,
-      status: mappedStatus,
-    },
-    access: {
-      role_company: 'admin',
-    },
+    hub_user_id: user.id,
+    hub_company_id: companyId || '',
+    role_company: roleCompany,
+    user: exportUser(user),
+    company: exportCompany(company),
     subscription: {
       id: sub.id,
-      status: statusSub,
+      status: sub.getString('status'),
       max_users: sub.getInt('max_users') || 1,
+      module_id: sub.getString('module_id'),
+      user_id: sub.getString('user_id'),
+      price: sub.getFloat('price'),
+      next_billing_date: sub.getString('next_billing_date'),
     },
   }
+
+  let status = 'success'
+  let errorMessage = ''
 
   try {
     const res = $http.send({
@@ -78,7 +112,8 @@ onRecordAfterCreateSuccess((e) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Hub-Secret': secret || '',
+        'X-Secret': secret || '',
+        Authorization: secret ? `Bearer ${secret}` : '',
       },
       body: JSON.stringify(payload),
       timeout: 10,

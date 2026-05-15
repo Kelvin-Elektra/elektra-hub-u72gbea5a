@@ -47,7 +47,9 @@ export default function Team() {
       const [emps, mods, subs, access] = await Promise.all([
         pb
           .collection('users')
-          .getFullList({ filter: `company_id = "${user.company_id}" && role = "User_employee"` }),
+          .getFullList({
+            filter: `company_id = "${user.company_id}" && role = "User_employee" && active = true`,
+          }),
         pb.collection('modules').getFullList({ filter: 'status = "active"' }),
         pb
           .collection('subscriptions')
@@ -93,7 +95,7 @@ export default function Team() {
   const handleRemoveEmployee = async (id: string) => {
     if (!confirm('Deseja realmente remover este funcionário? O acesso dele será revogado.')) return
     try {
-      await pb.collection('users').delete(id)
+      await pb.collection('users').update(id, { active: false })
       toast.success('Funcionário removido.')
       loadData()
     } catch (err) {

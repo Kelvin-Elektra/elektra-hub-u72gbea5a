@@ -69,7 +69,7 @@ export default function Unverified() {
         <MailWarning className="h-16 w-16 text-yellow-500 mx-auto" />
         <h1 className="text-2xl font-bold text-foreground">Confirme seu E-mail</h1>
         <p className="text-muted-foreground">
-          Por favor, verifique seu e-mail para acessar sua conta.
+          Por favor, verifique seu e-mail para acessar o portal.
           <br />
           <br />
           Enviamos um link para: <strong className="text-foreground">{user.email}</strong>. Por
@@ -83,7 +83,7 @@ export default function Unverified() {
             disabled={resending}
           >
             <Send className="h-4 w-4" />{' '}
-            {resending ? 'Enviando...' : 'Reenviar e-mail de confirmação'}
+            {resending ? 'Enviando...' : 'Reenviar E-mail de Verificação'}
           </Button>
           <Button onClick={handleRefresh} variant="secondary" className="w-full gap-2">
             <RefreshCw className="h-4 w-4" /> Já confirmei

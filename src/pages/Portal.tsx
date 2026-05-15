@@ -128,7 +128,9 @@ export default function Portal() {
       const [mods, subs, access] = await Promise.all([
         getModules(),
         isOwner ? getUserSubscriptions(user.id) : Promise.resolve([]),
-        !isOwner ? getEmployeeAccess(user.id) : Promise.resolve([]),
+        !isOwner
+          ? pb.collection('employee_access').getFullList({ filter: `employee_id = "${user.id}"` })
+          : Promise.resolve([]),
       ])
 
       setModules(mods.filter((m) => m.status === 'active'))
