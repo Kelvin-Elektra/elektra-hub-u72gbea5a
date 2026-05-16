@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   Card,
@@ -22,36 +22,52 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import {
-  getModules,
-  getUserSubscriptions,
-  getEmployeeAccess,
-  type Module,
-  type Subscription,
-} from '@/services/api'
+import { Skeleton } from '@/components/ui/skeleton'
+import { getModules, getUserSubscriptions, type Module, type Subscription } from '@/services/api'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
 import { Plug, CreditCard, Receipt, QrCode, ShoppingCart, Trash2, ExternalLink } from 'lucide-react'
 
+type PortalSubscription = Subscription & { role_company?: string }
+
 export default function Portal() {
   const { user } = useAuth()
-  const [modules, setModules] = useState<Module[]>([])
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const location = useLocation()
   const searchParams = new URLSearchParams(location.search)
   const rawSsoToken = searchParams.get('sso_token')
+
   const [isVerifyingSSO, setIsVerifyingSSO] = useState(!!rawSsoToken)
+  const [loadingData, setLoadingData] = useState(true)
+  const [errorData, setErrorData] = useState<string | null>(null)
+
+  const [modules, setModules] = useState<Module[]>([])
+  const [subscriptions, setSubscriptions] = useState<PortalSubscription[]>([])
+  const [company, setCompany] = useState<any>(null)
+
+  const [cart, setCart] = useState<Module[]>([])
+  const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+
+  const [paymentMethod, setPaymentMethod] = useState<'CREDIT_CARD' | 'PIX' | 'BOLETO'>(
+    'CREDIT_CARD',
+  )
+  const [ccNumber, setCcNumber] = useState('')
+  const [ccName, setCcName] = useState('')
+  const [ccExpiry, setCcExpiry] = useState('')
+  const [ccCvv, setCcCvv] = useState('')
+  const [loadingCheckout, setLoadingCheckout] = useState(false)
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
+  const [couponError, setCouponError] = useState('')
 
   useEffect(() => {
     if (!rawSsoToken) return
     const verifySso = async () => {
       setIsVerifyingSSO(true)
-      // Token Sanitization: clean the JWT string to remove unexpected query/hash artifacts
       const sanitizedToken = rawSsoToken.replace(/[&?#].*$/, '').trim()
       try {
-        // Step 1: Verify token using the standardized external endpoint path
         const verifyUrl = `${import.meta.env.VITE_POCKETBASE_URL}/api/backend/v1/sso-verify`
         const verifyResponse = await fetch(verifyUrl, {
           method: 'POST',
@@ -62,9 +78,6 @@ export default function Portal() {
         const verifyData = await verifyResponse.json().catch(() => ({}))
 
         if (!verifyResponse.ok) {
-          if (verifyData.error_details) {
-            console.error('SSO Verification Error Details:', verifyData.error_details)
-          }
           throw new Error(verifyData.message || 'Token verification failed')
         }
 
@@ -72,7 +85,6 @@ export default function Portal() {
           if (verifyData.status_token !== 'active') {
             throw new Error('Conta de usuário inativa.')
           }
-          // Step 2: Proceed to login using the token via PocketBase client
           const loginRes = await pb.send('/backend/v1/sso-login', {
             method: 'POST',
             body: JSON.stringify({ token: sanitizedToken }),
@@ -104,59 +116,67 @@ export default function Portal() {
     verifySso()
   }, [rawSsoToken])
 
-  const [cart, setCart] = useState<Module[]>([])
-  const [isCartOpen, setIsCartOpen] = useState(false)
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
-
-  const [paymentMethod, setPaymentMethod] = useState<'CREDIT_CARD' | 'PIX' | 'BOLETO'>(
-    'CREDIT_CARD',
-  )
-  const [ccNumber, setCcNumber] = useState('')
-  const [ccName, setCcName] = useState('')
-  const [ccExpiry, setCcExpiry] = useState('')
-  const [ccCvv, setCcCvv] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [couponCode, setCouponCode] = useState('')
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
-  const [couponError, setCouponError] = useState('')
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return
     try {
+      setLoadingData(true)
+      setErrorData(null)
       const isOwner = user.role === 'User_owner'
 
-      const [mods, subs, access] = await Promise.all([
-        getModules(),
-        isOwner ? getUserSubscriptions(user.id) : Promise.resolve([]),
-        !isOwner
-          ? pb.collection('employee_access').getFullList({ filter: `employee_id = "${user.id}"` })
-          : Promise.resolve([]),
-      ])
-
-      setModules(mods.filter((m) => m.status === 'active'))
+      const promises: Promise<any>[] = [getModules()]
 
       if (isOwner) {
-        setSubscriptions(subs)
+        promises.push(getUserSubscriptions(user.id))
       } else {
-        // Map employee_access to mimic active subscriptions for the UI
-        const mappedSubs = access.map((a) => ({
+        promises.push(
+          pb.collection('employee_access').getFullList({ filter: `employee_id = "${user.id}"` }),
+        )
+      }
+
+      if (user.company_id) {
+        promises.push(
+          pb
+            .collection('companies')
+            .getOne(user.company_id)
+            .catch(() => null),
+        )
+      } else {
+        promises.push(Promise.resolve(null))
+      }
+
+      const [mods, userAccessData, comp] = await Promise.all(promises)
+
+      setModules(mods.filter((m: Module) => m.status === 'active'))
+      setCompany(comp)
+
+      if (isOwner) {
+        setSubscriptions(userAccessData)
+      } else {
+        const mappedSubs = userAccessData.map((a: any) => ({
           id: a.id,
           module_id: a.module_id,
           user_id: user.id,
           status: 'active',
           price: 0,
+          role_company: a.role_company,
           expand: a.expand,
-        })) as Subscription[]
+        }))
         setSubscriptions(mappedSubs)
       }
     } catch (error) {
       console.error(error)
+      setErrorData('Falha ao carregar os dados. Verifique sua conexão ou contate o suporte.')
+    } finally {
+      setLoadingData(false)
     }
-  }
+  }, [user])
 
   useEffect(() => {
-    loadData()
-  }, [user])
+    if (!isVerifyingSSO) {
+      loadData()
+    }
+  }, [loadData, isVerifyingSSO])
+
   useRealtime('subscriptions', loadData)
   useRealtime('modules', loadData)
   useRealtime('employee_access', loadData)
@@ -177,7 +197,7 @@ export default function Portal() {
     if (!couponCode.trim()) return
 
     try {
-      setLoading(true)
+      setLoadingCheckout(true)
       const records = await pb.collection('coupons').getList(1, 1, {
         filter: `code = "${couponCode.trim()}" && active = true`,
       })
@@ -200,7 +220,7 @@ export default function Portal() {
     } catch (error) {
       setCouponError('Erro ao validar cupom.')
     } finally {
-      setLoading(false)
+      setLoadingCheckout(false)
     }
   }
 
@@ -221,7 +241,7 @@ export default function Portal() {
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
     if (cart.length === 0) return
-    setLoading(true)
+    setLoadingCheckout(true)
 
     try {
       let expiryMonth = ''
@@ -260,7 +280,7 @@ export default function Portal() {
     } catch (error: any) {
       toast.error(error.response?.message || error.message || 'Erro ao processar assinatura.')
     } finally {
-      setLoading(false)
+      setLoadingCheckout(false)
     }
   }
 
@@ -279,6 +299,12 @@ export default function Portal() {
     }
   }
 
+  const getRoleBadge = (sub: PortalSubscription) => {
+    if (user?.role === 'User_owner') return 'Admin (Proprietário)'
+    if (sub.role_company === 'admin') return 'Admin'
+    return 'Usuário'
+  }
+
   if (isVerifyingSSO) {
     return (
       <div className="flex items-center justify-center h-full min-h-[50vh]">
@@ -292,13 +318,68 @@ export default function Portal() {
 
   if (!user) return null
 
+  if (loadingData) {
+    return (
+      <div className="space-y-6 relative pb-20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="flex flex-col">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+                <Skeleton className="h-6 w-32 mt-4" />
+                <Skeleton className="h-4 w-24 mt-2" />
+              </CardHeader>
+              <CardContent className="flex-1 space-y-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </CardContent>
+              <CardFooter>
+                <Skeleton className="h-10 w-full" />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (errorData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[50vh] space-y-4 text-center">
+        <div className="bg-destructive/10 p-4 rounded-full">
+          <Plug className="h-8 w-8 text-destructive" />
+        </div>
+        <h2 className="text-2xl font-semibold">Ops, algo deu errado</h2>
+        <p className="text-muted-foreground max-w-md">{errorData}</p>
+        <Button onClick={() => loadData()}>Tentar Novamente</Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 relative pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Módulos Disponíveis</h1>
-          <p className="text-muted-foreground">
-            Explore e ative novas funcionalidades para sua conta.
+          <h1 className="text-3xl font-bold tracking-tight">
+            Módulos Disponíveis{' '}
+            {company && (
+              <span className="text-muted-foreground font-normal text-2xl ml-2">
+                / {company.name}
+              </span>
+            )}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Explore e acesse as funcionalidades da sua conta.
           </p>
         </div>
       </div>
@@ -355,6 +436,13 @@ export default function Portal() {
                     Ative este módulo para acessar funcionalidades exclusivas do {mod.name}.
                   </p>
                 )}
+
+                {canAccess && (
+                  <p className="text-xs text-muted-foreground font-medium bg-secondary/50 inline-block px-2 py-1 rounded">
+                    Permissão: {getRoleBadge(sub)}
+                  </p>
+                )}
+
                 {mod.features && (
                   <div className="space-y-1 mt-4">
                     <p className="text-xs font-semibold text-foreground">Recursos:</p>
@@ -583,13 +671,13 @@ export default function Portal() {
                         setCouponError('')
                       }
                     }}
-                    disabled={loading}
+                    disabled={loadingCheckout}
                   />
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={handleApplyCoupon}
-                    disabled={!couponCode || loading || appliedCoupon?.code === couponCode}
+                    disabled={!couponCode || loadingCheckout || appliedCoupon?.code === couponCode}
                   >
                     Aplicar
                   </Button>
@@ -612,8 +700,8 @@ export default function Portal() {
               <Button type="button" variant="outline" onClick={() => setIsCheckoutOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Processando...' : 'Confirmar Assinatura'}
+              <Button type="submit" disabled={loadingCheckout}>
+                {loadingCheckout ? 'Processando...' : 'Confirmar Assinatura'}
               </Button>
             </DialogFooter>
           </form>

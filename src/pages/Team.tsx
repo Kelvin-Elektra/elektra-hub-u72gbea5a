@@ -45,11 +45,9 @@ export default function Team() {
     if (!user || !user.company_id) return
     try {
       const [emps, mods, subs, access] = await Promise.all([
-        pb
-          .collection('users')
-          .getFullList({
-            filter: `company_id = "${user.company_id}" && role = "User_employee" && active = true`,
-          }),
+        pb.collection('users').getFullList({
+          filter: `company_id = "${user.company_id}" && role = "User_employee" && active = true`,
+        }),
         pb.collection('modules').getFullList({ filter: 'status = "active"' }),
         pb
           .collection('subscriptions')
