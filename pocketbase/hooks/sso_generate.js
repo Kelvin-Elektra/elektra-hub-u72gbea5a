@@ -11,14 +11,50 @@ routerAdd(
     const body = e.requestInfo().body || {}
     const moduleId = body.module_id
 
+    let companyId = user.getString('company_id')
+    let companyName = user.getString('company_name')
+
+    if (body.check_all && companyId) {
+      try {
+        const subs = $app.findRecordsByFilter(
+          'subscriptions',
+          'user_id.company_id = {:companyId}',
+          '-created',
+          100,
+          0,
+          { companyId },
+        )
+        const result = subs.map((s) => ({
+          module_id: s.getString('module_id'),
+          status: s.getString('status'),
+        }))
+        return e.json(200, result)
+      } catch (err) {
+        return e.json(200, [])
+      }
+    }
+
+    if (moduleId && companyId) {
+      try {
+        const sub = $app.findFirstRecordByFilter(
+          'subscriptions',
+          `user_id.company_id = {:companyId} && module_id = {:moduleId}`,
+          { companyId, moduleId },
+        )
+        const status = sub.getString('status')
+        if (status !== 'active' && status !== 'trialing') {
+          return e.forbiddenError('Subscription is not active')
+        }
+      } catch (err) {
+        return e.forbiddenError('No active subscription found for this module')
+      }
+    }
+
     const secret = $secrets.get('SSO_SECRET')
     if (!secret) {
       $app.logger().error('SSO generate failed: SSO_SECRET is undefined')
       return e.internalServerError('SSO configuration error')
     }
-
-    let companyId = user.getString('company_id')
-    let companyName = user.getString('company_name')
 
     if (companyId) {
       try {
@@ -60,11 +96,11 @@ routerAdd(
           company_id: companyId,
           role_company: roleCompany,
           company_name: companyName,
+          module_id: moduleId,
         },
         secret,
-        3600,
+        604800,
       )
-
       $app.logger().info('SSO token generated successfully', 'userId', user.id)
       return e.json(200, { token })
     } catch (err) {

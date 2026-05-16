@@ -50,5 +50,36 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
     return notFoundResponse()
   }
 
+  const moduleId = payload.module_id
+  const companyId = user.getString('company_id')
+
+  if (moduleId && companyId) {
+    try {
+      const sub = $app.findFirstRecordByFilter(
+        'subscriptions',
+        `user_id.company_id = {:companyId} && module_id = {:moduleId}`,
+        { companyId, moduleId },
+      )
+      const status = sub.getString('status')
+      if (status !== 'active' && status !== 'trialing') {
+        throw new Error('Subscription not active')
+      }
+    } catch (err) {
+      return unauthorizedResponse('No active subscription for this module')
+    }
+
+    if (user.getString('role') === 'User_employee') {
+      try {
+        $app.findFirstRecordByFilter(
+          'employee_access',
+          `employee_id = {:emp} && module_id = {:mod}`,
+          { emp: user.id, mod: moduleId },
+        )
+      } catch (err) {
+        return unauthorizedResponse('No access granted for this employee')
+      }
+    }
+  }
+
   return $apis.recordAuthResponse($app, e, user)
 })

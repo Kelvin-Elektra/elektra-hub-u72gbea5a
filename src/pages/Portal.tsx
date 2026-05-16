@@ -131,6 +131,15 @@ export default function Portal() {
         promises.push(
           pb.collection('employee_access').getFullList({ filter: `employee_id = "${user.id}"` }),
         )
+        promises.push(
+          pb
+            .send('/backend/v1/sso-generate', {
+              method: 'POST',
+              body: JSON.stringify({ check_all: true }),
+              headers: { 'Content-Type': 'application/json' },
+            })
+            .catch(() => []),
+        )
       }
 
       if (user.company_id) {
@@ -144,7 +153,19 @@ export default function Portal() {
         promises.push(Promise.resolve(null))
       }
 
-      const [mods, userAccessData, comp] = await Promise.all(promises)
+      const results = await Promise.all(promises)
+      const mods = results[0]
+      const userAccessData = results[1]
+
+      let companySubs: any[] = []
+      let comp = null
+
+      if (isOwner) {
+        comp = results[2]
+      } else {
+        companySubs = results[2] || []
+        comp = results[3]
+      }
 
       setModules(mods.filter((m: Module) => m.status === 'active'))
       setCompany(comp)
@@ -152,15 +173,18 @@ export default function Portal() {
       if (isOwner) {
         setSubscriptions(userAccessData)
       } else {
-        const mappedSubs = userAccessData.map((a: any) => ({
-          id: a.id,
-          module_id: a.module_id,
-          user_id: user.id,
-          status: 'active',
-          price: 0,
-          role_company: a.role_company,
-          expand: a.expand,
-        }))
+        const mappedSubs = userAccessData.map((a: any) => {
+          const cSub = companySubs.find((cs: any) => cs.module_id === a.module_id)
+          return {
+            id: a.id,
+            module_id: a.module_id,
+            user_id: user.id,
+            status: cSub ? cSub.status : 'inactive',
+            price: 0,
+            role_company: a.role_company,
+            expand: a.expand,
+          }
+        })
         setSubscriptions(mappedSubs)
       }
     } catch (error) {
@@ -459,14 +483,28 @@ export default function Portal() {
                   <Button variant="outline" className="w-full" onClick={() => handleAccess(mod)}>
                     Acessar Módulo <ExternalLink className="h-4 w-4 ml-2" />
                   </Button>
+                ) : sub && (sub.status === 'canceled' || sub.status === 'overdue') ? (
+                  user.role === 'User_owner' ? (
+                    <Button
+                      className="w-full"
+                      variant="destructive"
+                      onClick={() => (inCart ? removeFromCart(mod.id) : addToCart(mod))}
+                    >
+                      {inCart ? 'Remover do Carrinho' : 'Renovar Assinatura'}
+                    </Button>
+                  ) : (
+                    <div className="w-full text-center text-sm text-destructive py-2 border border-destructive/20 rounded-md bg-destructive/10">
+                      Assinatura Inativa
+                    </div>
+                  )
                 ) : user.role === 'User_owner' ? (
                   <Button
                     className="w-full"
                     variant={inCart ? 'secondary' : 'default'}
                     onClick={() => (inCart ? removeFromCart(mod.id) : addToCart(mod))}
-                    disabled={!!sub && sub.status !== 'canceled'}
+                    disabled={!!sub && sub.status !== 'canceled' && sub.status !== 'overdue'}
                   >
-                    {sub && sub.status !== 'canceled'
+                    {sub && sub.status !== 'canceled' && sub.status !== 'overdue'
                       ? 'Processando...'
                       : inCart
                         ? 'Remover do Carrinho'

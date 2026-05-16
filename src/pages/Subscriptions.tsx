@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,6 +29,7 @@ export default function Subscriptions() {
   const [subscriptions, setSubscriptions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
 
   const loadData = async () => {
     try {
@@ -45,6 +53,10 @@ export default function Subscriptions() {
   useRealtime('subscriptions', loadData)
 
   const filteredSubs = subscriptions.filter((s) => {
+    if (roleFilter !== 'all') {
+      if (s.expand?.user_id?.role !== roleFilter) return false
+    }
+
     if (!search) return true
     const sTerm = search.toLowerCase()
     const userName = s.expand?.user_id?.name?.toLowerCase() || ''
@@ -91,17 +103,29 @@ export default function Subscriptions() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-lg font-medium">Buscar Assinaturas</CardTitle>
+          <CardTitle className="text-lg font-medium">Buscar e Filtrar Assinaturas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por cliente ou módulo..."
-              className="pl-8"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente ou módulo..."
+                className="pl-8"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full sm:w-[220px]">
+                <SelectValue placeholder="Filtrar por Papel" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Papéis</SelectItem>
+                <SelectItem value="User_owner">Proprietários (User_owner)</SelectItem>
+                <SelectItem value="User_employee">Funcionários (User_employee)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -140,7 +164,8 @@ export default function Subscriptions() {
                         {s.expand?.user_id?.company_name || s.expand?.user_id?.name || 'Sem nome'}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {s.expand?.user_id?.email}
+                        {s.expand?.user_id?.email} •{' '}
+                        {s.expand?.user_id?.role === 'User_owner' ? 'Proprietário' : 'Funcionário'}
                       </div>
                     </TableCell>
                     <TableCell>{s.expand?.module_id?.name || '-'}</TableCell>

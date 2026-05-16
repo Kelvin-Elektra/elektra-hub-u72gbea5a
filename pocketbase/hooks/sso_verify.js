@@ -84,6 +84,57 @@ routerAdd('POST', '/backend/v1/sso-verify', (e) => {
 
   const isFullyActive = isActive && companyActive
 
+  // Additional verification for module_id subscription and employee access
+  if (isFullyActive && payload.module_id && companyId) {
+    try {
+      const sub = $app.findFirstRecordByFilter(
+        'subscriptions',
+        `user_id.company_id = {:companyId} && module_id = {:moduleId}`,
+        { companyId, moduleId: payload.module_id },
+      )
+      const status = sub.getString('status')
+      if (status !== 'active' && status !== 'trialing') {
+        throw new Error('Subscription is not active')
+      }
+    } catch (err) {
+      $app
+        .logger()
+        .error(
+          'SSO verify failed: No active subscription for module',
+          'moduleId',
+          payload.module_id,
+        )
+      return e.json(403, {
+        status: 403,
+        message: 'No active subscription for this module',
+        error_details: 'The company does not have an active subscription for the requested module.',
+      })
+    }
+
+    if (user.getString('role') === 'User_employee') {
+      try {
+        $app.findFirstRecordByFilter(
+          'employee_access',
+          `employee_id = {:emp} && module_id = {:mod}`,
+          { emp: user.id, mod: payload.module_id },
+        )
+      } catch (err) {
+        $app
+          .logger()
+          .error(
+            'SSO verify failed: Employee has no access to module',
+            'moduleId',
+            payload.module_id,
+          )
+        return e.json(403, {
+          status: 403,
+          message: 'No access granted for this employee',
+          error_details: 'The employee does not have access to this module.',
+        })
+      }
+    }
+  }
+
   $app
     .logger()
     .info(
