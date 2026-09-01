@@ -82,11 +82,20 @@ onRecordAfterUpdateSuccess((e) => {
     if (!rec) return null
     return {
       id: rec.id,
+      hub_company_id: rec.id,
       created: rec.getString('created'),
       updated: rec.getString('updated'),
       name: rec.getString('name'),
+      nome: rec.getString('name'),
       tax_id: rec.getString('tax_id'),
       status: rec.getString('status'),
+      address: rec.getString('address'),
+      address_number: rec.getString('address_number'),
+      complement: rec.getString('complement'),
+      neighborhood: rec.getString('neighborhood'),
+      city: rec.getString('city'),
+      state: rec.getString('state'),
+      postal_code: rec.getString('postal_code'),
     }
   }
 

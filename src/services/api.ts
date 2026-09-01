@@ -11,6 +11,23 @@ export interface Module {
   features?: string
 }
 
+export interface Company {
+  id: string
+  name: string
+  tax_id?: string
+  status: 'active' | 'inactive'
+  address?: string
+  address_number?: string
+  complement?: string
+  neighborhood?: string
+  city?: string
+  state?: string
+  postal_code?: string
+  phone?: string
+  created: string
+  updated: string
+}
+
 export interface Subscription {
   id: string
   module_id: string
@@ -21,6 +38,27 @@ export interface Subscription {
   expand?: {
     user_id?: any
     module_id?: any
+  }
+}
+
+export interface SyncLog {
+  id: string
+  subscription_id: string
+  status: 'success' | 'failed'
+  error_message?: string
+  created: string
+  updated: string
+  expand?: {
+    subscription_id?: {
+      expand?: {
+        module_id?: {
+          name?: string
+        }
+        user_id?: {
+          company_name?: string
+        }
+      }
+    }
   }
 }
 

@@ -37,16 +37,21 @@ import pb from '@/lib/pocketbase/client'
 export default function Users() {
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState<any[]>([])
+  const [companies, setCompanies] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [formData, setFormData] = useState<any>({ role: 'User_owner' })
+  const [formData, setFormData] = useState<any>({ role: 'User_owner', company_id: '' })
   const [loading, setLoading] = useState(false)
   const [deactivateConfirmId, setDeactivateConfirmId] = useState<string | null>(null)
   const [tab, setTab] = useState('active')
 
   const loadData = async () => {
     try {
-      const usrData = await pb.collection('users').getFullList({ sort: '-created' })
+      const [usrData, compData] = await Promise.all([
+        pb.collection('users').getFullList({ sort: '-created' }),
+        pb.collection('companies').getFullList({ sort: 'name' }),
+      ])
       setUsers(usrData)
+      setCompanies(compData)
     } catch (e) {
       console.error(e)
     }
@@ -56,12 +61,23 @@ export default function Users() {
     loadData()
   }, [])
   useRealtime('users', loadData)
+  useRealtime('companies', loadData)
+
+  const companiesMap = companies.reduce(
+    (acc, comp) => {
+      acc[comp.id] = comp.name
+      return acc
+    },
+    {} as Record<string, string>,
+  )
 
   const filteredUsers = users.filter((u) => {
+    const compNameFromId = u.company_id ? companiesMap[u.company_id] || '' : ''
     const matchesSearch =
       (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.company_name || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (u.company_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      compNameFromId.toLowerCase().includes(searchTerm.toLowerCase())
 
     const isActive = u.active === true
     if (tab === 'active') return matchesSearch && isActive
@@ -80,11 +96,16 @@ export default function Users() {
 
     setLoading(true)
     try {
-      const dataToSubmit = { ...formData, active: true }
+      const selectedCompany = companies.find((c) => c.id === formData.company_id)
+      const dataToSubmit = {
+        ...formData,
+        company_name: selectedCompany ? selectedCompany.name : formData.company_name || '',
+        active: true,
+      }
       await pb.collection('users').create(dataToSubmit)
       toast.success('Usuário criado com sucesso.')
       setIsOpen(false)
-      setFormData({ role: 'User_owner' })
+      setFormData({ role: 'User_owner', company_id: '' })
       loadData()
     } catch (e) {
       toast.error(getErrorMessage(e))
@@ -158,18 +179,22 @@ export default function Users() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {user.person_type ? (
-                      <div className="flex flex-col">
+                    <div className="flex flex-col">
+                      {user.person_type ? (
                         <span className="text-sm">
-                          {user.person_type} - {user.tax_id}
+                          {user.person_type} - {user.tax_id || 'Sem documento'}
                         </span>
-                        {user.company_name && (
-                          <span className="text-xs text-muted-foreground">{user.company_name}</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
+                      ) : null}
+                      {user.company_id && companiesMap[user.company_id] ? (
+                        <span className="text-xs font-medium text-primary">
+                          {companiesMap[user.company_id]}
+                        </span>
+                      ) : user.company_name ? (
+                        <span className="text-xs text-muted-foreground">{user.company_name}</span>
+                      ) : !user.person_type ? (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.role === 'Admin' ? 'default' : 'outline'}>
@@ -234,17 +259,18 @@ export default function Users() {
       </Card>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Novo Usuário</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nome</Label>
+                <Label>Nome *</Label>
                 <Input
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Nome do usuário"
                 />
               </div>
               <div className="space-y-2">
@@ -265,13 +291,36 @@ export default function Users() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label>Empresa (Vínculo)</Label>
+              <Select
+                value={formData.company_id || 'none'}
+                onValueChange={(val: string) =>
+                  setFormData({ ...formData, company_id: val === 'none' ? '' : val })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma empresa (avulso)</SelectItem>
+                  {companies.map((comp) => (
+                    <SelectItem key={comp.id} value={comp.id}>
+                      {comp.name} {comp.tax_id ? `(${comp.tax_id})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Email</Label>
+                <Label>Email *</Label>
                 <Input
                   type="email"
                   value={formData.email || ''}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="usuario@exemplo.com"
                 />
               </div>
               <div className="space-y-2">
@@ -279,25 +328,28 @@ export default function Users() {
                 <Input
                   value={formData.phone || ''}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="(00) 00000-0000"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Senha</Label>
+                <Label>Senha *</Label>
                 <Input
                   type="password"
                   value={formData.password || ''}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="••••••••"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Confirmar Senha</Label>
+                <Label>Confirmar Senha *</Label>
                 <Input
                   type="password"
                   value={formData.passwordConfirm || ''}
                   onChange={(e) => setFormData({ ...formData, passwordConfirm: e.target.value })}
+                  placeholder="••••••••"
                 />
               </div>
             </div>

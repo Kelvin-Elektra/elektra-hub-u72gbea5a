@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sidebar'
 import {
   Home,
+  Building2,
   Users,
   CreditCard,
   Settings as SettingsIcon,
@@ -32,6 +33,7 @@ export default function Layout() {
     { title: 'Dashboard', path: '/admin', icon: Home },
     { title: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard },
     { title: 'Módulos', path: '/admin/modulos', icon: Package },
+    { title: 'Empresa', path: '/admin/empresas', icon: Building2 },
     { title: 'Usuários', path: '/admin/usuarios', icon: Users },
     { title: 'Cupons', path: '/admin/cupons', icon: Ticket },
     { title: 'Configurações', path: '/admin/configuracoes', icon: SettingsIcon },
