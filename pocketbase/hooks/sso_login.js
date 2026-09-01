@@ -81,5 +81,5 @@ routerAdd('POST', '/backend/v1/sso-login', (e) => {
     }
   }
 
-  return $apis.recordAuthResponse($app, e, user)
+  return $apis.recordAuthResponse(e, user)
 })
