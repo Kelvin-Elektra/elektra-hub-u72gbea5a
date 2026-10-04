@@ -47,7 +47,10 @@ export default function Users() {
   const loadData = async () => {
     try {
       const [usrData, compData] = await Promise.all([
-        pb.collection('users').getFullList({ sort: '-created' }),
+        pb.collection('users').getFullList({
+          filter: "role = 'User_owner'",
+          sort: '-created',
+        }),
         pb.collection('companies').getFullList({ sort: 'name' }),
       ])
       setUsers(usrData)
@@ -99,11 +102,12 @@ export default function Users() {
       const selectedCompany = companies.find((c) => c.id === formData.company_id)
       const dataToSubmit = {
         ...formData,
+        role: 'User_owner',
         company_name: selectedCompany ? selectedCompany.name : formData.company_name || '',
         active: true,
       }
       await pb.collection('users').create(dataToSubmit)
-      toast.success('Usuário criado com sucesso.')
+      toast.success('Assinante (proprietário) criado com sucesso.')
       setIsOpen(false)
       setFormData({ role: 'User_owner', company_id: '' })
       loadData()
@@ -117,7 +121,7 @@ export default function Users() {
     try {
       await pb.collection('users').update(id, { active: makeActive })
       toast.success(
-        makeActive ? 'Usuário reativado com sucesso.' : 'Usuário desativado com sucesso.',
+        makeActive ? 'Assinante reativado com sucesso.' : 'Assinante desativado com sucesso.',
       )
       setDeactivateConfirmId(null)
       loadData()
@@ -130,11 +134,13 @@ export default function Users() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestão de Usuários</h1>
-          <p className="text-muted-foreground">Visão global de todos os usuários do ecossistema.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Assinantes</h1>
+          <p className="text-muted-foreground">
+            Proprietários das companhias responsáveis pelas assinaturas dos módulos.
+          </p>
         </div>
         <Button onClick={() => setIsOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Adicionar Usuário
+          <Plus className="h-4 w-4" /> Adicionar Assinante
         </Button>
       </div>
 
@@ -150,7 +156,7 @@ export default function Users() {
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, email ou empresa..."
+              placeholder="Buscar assinante por nome, email ou empresa..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -161,8 +167,8 @@ export default function Users() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead>Usuário</TableHead>
-              <TableHead>Tipo/Documento</TableHead>
+              <TableHead>Assinante (Proprietário)</TableHead>
+              <TableHead>Empresa / Documento</TableHead>
               <TableHead>Papel</TableHead>
               <TableHead>Criado em</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -180,26 +186,25 @@ export default function Users() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      {user.person_type ? (
-                        <span className="text-sm">
-                          {user.person_type} - {user.tax_id || 'Sem documento'}
-                        </span>
-                      ) : null}
                       {user.company_id && companiesMap[user.company_id] ? (
-                        <span className="text-xs font-medium text-primary">
+                        <span className="text-sm font-medium text-primary">
                           {companiesMap[user.company_id]}
                         </span>
                       ) : user.company_name ? (
-                        <span className="text-xs text-muted-foreground">{user.company_name}</span>
-                      ) : !user.person_type ? (
-                        <span className="text-sm text-muted-foreground">-</span>
+                        <span className="text-sm font-medium">{user.company_name}</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Sem empresa vinculada</span>
+                      )}
+                      {user.tax_id ? (
+                        <span className="text-xs text-muted-foreground">
+                          {user.person_type ? `${user.person_type}: ` : ''}
+                          {user.tax_id}
+                        </span>
                       ) : null}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'Admin' ? 'default' : 'outline'}>
-                      {user.role || 'User_employee'}
-                    </Badge>
+                    <Badge variant="default">Proprietário (User_owner)</Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(user.created).toLocaleDateString('pt-BR')}
@@ -217,7 +222,7 @@ export default function Users() {
                             to={`/admin/assinaturas/${user.id}`}
                             className="flex items-center gap-2"
                           >
-                            <Settings2 className="h-4 w-4" /> Gerenciar
+                            <Settings2 className="h-4 w-4" /> Gerenciar Assinaturas
                           </Link>
                         </Button>
                       )}
@@ -228,7 +233,7 @@ export default function Users() {
                           size="sm"
                           onClick={() => setDeactivateConfirmId(user.id)}
                           className="text-destructive hover:bg-destructive/10 transition-colors"
-                          title="Desativar usuário"
+                          title="Desativar assinante"
                         >
                           <Archive className="h-4 w-4" />
                         </Button>
@@ -238,7 +243,7 @@ export default function Users() {
                           size="sm"
                           onClick={() => handleToggleActive(user.id, true)}
                           className="text-green-600 hover:bg-green-600/10 transition-colors"
-                          title="Reativar usuário"
+                          title="Reativar assinante"
                         >
                           <ArchiveRestore className="h-4 w-4" />
                         </Button>
@@ -250,7 +255,7 @@ export default function Users() {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  Nenhum usuário encontrado.
+                  Nenhum assinante proprietário encontrado.
                 </TableCell>
               </TableRow>
             )}
@@ -261,38 +266,20 @@ export default function Users() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Novo Usuário</DialogTitle>
+            <DialogTitle>Novo Assinante (Proprietário)</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Nome *</Label>
-                <Input
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Nome do usuário"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Papel</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(val: any) => setFormData({ ...formData, role: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Admin">Administrador</SelectItem>
-                    <SelectItem value="User_owner">Proprietário (User_owner)</SelectItem>
-                    <SelectItem value="User_employee">Funcionário (User_employee)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Nome Completo *</Label>
+              <Input
+                value={formData.name || ''}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Nome do proprietário"
+              />
             </div>
 
             <div className="space-y-2">
-              <Label>Empresa (Vínculo)</Label>
+              <Label>Empresa (Vínculo) *</Label>
               <Select
                 value={formData.company_id || 'none'}
                 onValueChange={(val: string) =>
@@ -300,10 +287,10 @@ export default function Users() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma empresa" />
+                  <SelectValue placeholder="Selecione a empresa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nenhuma empresa (avulso)</SelectItem>
+                  <SelectItem value="none">Nenhuma empresa</SelectItem>
                   {companies.map((comp) => (
                     <SelectItem key={comp.id} value={comp.id}>
                       {comp.name} {comp.tax_id ? `(${comp.tax_id})` : ''}
@@ -320,7 +307,7 @@ export default function Users() {
                   type="email"
                   value={formData.email || ''}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="usuario@exemplo.com"
+                  placeholder="proprietario@empresa.com"
                 />
               </div>
               <div className="space-y-2">
@@ -356,7 +343,7 @@ export default function Users() {
           </div>
           <DialogFooter>
             <Button onClick={handleCreate} disabled={loading}>
-              {loading ? 'Criando...' : 'Salvar Usuário'}
+              {loading ? 'Criando...' : 'Salvar Assinante'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -368,12 +355,12 @@ export default function Users() {
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Desativar Usuário</DialogTitle>
+            <DialogTitle>Desativar Assinante</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Tem certeza que deseja desativar este usuário? Ele perderá acesso ao sistema até ser
-              reativado.
+              Tem certeza que deseja desativar este assinante? A revogação será sincronizada
+              automaticamente com todos os módulos SaaS vinculados.
             </p>
           </div>
           <DialogFooter>

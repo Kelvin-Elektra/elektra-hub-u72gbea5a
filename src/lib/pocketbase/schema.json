@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T12:22:59.437Z",
+  "generatedAt": "2026-10-04T19:54:49.585Z",
   "collections": [
     {
       "name": "users",
@@ -402,7 +402,7 @@
         {
           "name": "subscription_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "subscriptions"
         },

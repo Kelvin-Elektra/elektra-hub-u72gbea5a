@@ -32,9 +32,10 @@ export default function Layout() {
   const navItems = [
     { title: 'Dashboard', path: '/admin', icon: Home },
     { title: 'Assinaturas', path: '/admin/assinaturas', icon: CreditCard },
-    { title: 'Módulos', path: '/admin/modulos', icon: Package },
-    { title: 'Empresa', path: '/admin/empresas', icon: Building2 },
+    { title: 'Assinantes', path: '/admin/assinantes', icon: Users },
     { title: 'Usuários', path: '/admin/usuarios', icon: Users },
+    { title: 'Empresa', path: '/admin/empresas', icon: Building2 },
+    { title: 'Módulos', path: '/admin/modulos', icon: Package },
     { title: 'Cupons', path: '/admin/cupons', icon: Ticket },
     { title: 'Configurações', path: '/admin/configuracoes', icon: SettingsIcon },
   ]

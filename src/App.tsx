@@ -7,6 +7,7 @@ import Index from './pages/Index'
 import Subscriptions from './pages/Subscriptions'
 import SubscriptionDetail from './pages/SubscriptionDetail'
 import Users from './pages/Users'
+import UsersAdmin from './pages/UsersAdmin'
 import ModulesAdmin from './pages/ModulesAdmin'
 import CompaniesAdmin from './pages/CompaniesAdmin'
 import Settings from './pages/Settings'
@@ -98,8 +99,9 @@ const App = () => (
               <Route path="/admin" element={<Index />} />
               <Route path="/admin/assinaturas" element={<Subscriptions />} />
               <Route path="/admin/assinaturas/:id" element={<SubscriptionDetail />} />
+              <Route path="/admin/assinantes" element={<Users />} />
+              <Route path="/admin/usuarios" element={<UsersAdmin />} />
               <Route path="/admin/empresas" element={<CompaniesAdmin />} />
-              <Route path="/admin/usuarios" element={<Users />} />
               <Route path="/admin/modulos" element={<ModulesAdmin />} />
               <Route path="/admin/cupons" element={<CouponsAdmin />} />
               <Route path="/admin/configuracoes" element={<Settings />} />
