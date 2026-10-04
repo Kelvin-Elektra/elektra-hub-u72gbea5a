@@ -57,14 +57,26 @@ onRecordAfterUpdateSuccess((e) => {
     let endpoint = mod.getString('endpoint_url')
     if (!endpoint) continue
 
-    endpoint = endpoint.replace('/api/backend/v1/', '/backend/v1/')
+    if (endpoint.includes('/api/backend/v1/')) {
+      endpoint = endpoint.replace('/api/backend/v1/', '/backend/v1/')
+    } else if (endpoint.endsWith('/backend/v1/sync-hub-user')) {
+      endpoint = endpoint.replace('/backend/v1/sync-hub-user', '/backend/v1/hub-sync')
+    } else if (!endpoint.includes('/backend/v1/hub-sync')) {
+      try {
+        const parts = endpoint.split('/')
+        endpoint = parts[0] + '//' + parts[2] + '/backend/v1/hub-sync'
+      } catch (_) {
+        endpoint = endpoint.replace(/\/+$/, '') + '/backend/v1/hub-sync'
+      }
+    }
+
     const secretName = mod.getString('secret_key_name')
     const secret = secretName ? $secrets.get(secretName) : ''
 
+    // Contrato estrito: Revogar/Reativar EMPRESA não pode enviar user.active
     const payload = {
       hub_user_id: ownerUser.id,
       hub_company_id: companyId,
-      user: { active: true },
       company: { status: newCompanyStatus },
     }
 

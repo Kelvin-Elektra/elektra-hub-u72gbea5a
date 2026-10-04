@@ -6,14 +6,17 @@ onRecordAfterUpdateSuccess((e) => {
 
   const user = e.record
   const newActive = user.getBool('active')
-  const companyId = user.getString('company_id') || ''
+  let companyId = user.getString('company_id') || ''
 
-  // Buscar status atual da company vinculada ao usuário
-  let currentCompanyStatus = 'active'
-  if (companyId) {
+  // Se o usuário não tiver company_id preenchido diretamente, tenta buscar se ele é dono de alguma empresa
+  if (!companyId) {
     try {
-      const comp = $app.findRecordById('companies', companyId)
-      currentCompanyStatus = comp.getString('status') || 'active'
+      const comp = $app.findFirstRecordByFilter('companies', 'tax_id = {:tax}', {
+        tax: user.getString('tax_id'),
+      })
+      if (comp) {
+        companyId = comp.id
+      }
     } catch (_) {}
   }
 
@@ -37,15 +40,27 @@ onRecordAfterUpdateSuccess((e) => {
     let endpoint = mod.getString('endpoint_url')
     if (!endpoint) continue
 
-    endpoint = endpoint.replace('/api/backend/v1/', '/backend/v1/')
+    if (endpoint.includes('/api/backend/v1/')) {
+      endpoint = endpoint.replace('/api/backend/v1/', '/backend/v1/')
+    } else if (endpoint.endsWith('/backend/v1/sync-hub-user')) {
+      endpoint = endpoint.replace('/backend/v1/sync-hub-user', '/backend/v1/hub-sync')
+    } else if (!endpoint.includes('/backend/v1/hub-sync')) {
+      try {
+        const parts = endpoint.split('/')
+        endpoint = parts[0] + '//' + parts[2] + '/backend/v1/hub-sync'
+      } catch (_) {
+        endpoint = endpoint.replace(/\/+$/, '') + '/backend/v1/hub-sync'
+      }
+    }
+
     const secretName = mod.getString('secret_key_name')
     const secret = secretName ? $secrets.get(secretName) : ''
 
+    // Contrato estrito: Revogar/Reativar USUÁRIO não pode enviar company.status
     const payload = {
       hub_user_id: user.id,
       hub_company_id: companyId,
       user: { active: newActive },
-      company: { status: currentCompanyStatus },
     }
 
     let status = 'success'

@@ -22,14 +22,37 @@ onRecordAfterCreateSuccess((e) => {
 
   if (!endpoint) return e.next()
 
-  endpoint = endpoint.replace('/api/backend/v1/', '/backend/v1/')
+  if (endpoint.includes('/api/backend/v1/')) {
+    endpoint = endpoint.replace('/api/backend/v1/', '/backend/v1/')
+  } else if (endpoint.endsWith('/backend/v1/sync-hub-user')) {
+    endpoint = endpoint.replace('/backend/v1/sync-hub-user', '/backend/v1/hub-sync')
+  } else if (!endpoint.includes('/backend/v1/hub-sync')) {
+    try {
+      const parts = endpoint.split('/')
+      endpoint = parts[0] + '//' + parts[2] + '/backend/v1/hub-sync'
+    } catch (_) {
+      endpoint = endpoint.replace(/\/+$/, '') + '/backend/v1/hub-sync'
+    }
+  }
+
   const secret = secretName ? $secrets.get(secretName) : ''
 
-  let companyId = user.getString('company_id')
+  let companyId = user.getString('company_id') || ''
   let company = null
   if (companyId) {
     try {
       company = $app.findRecordById('companies', companyId)
+    } catch (_) {}
+  }
+
+  // Se o usuário não tiver company_id vinculado diretamente, tenta encontrar a empresa pelo tax_id ou por owner
+  if (!companyId) {
+    try {
+      const taxId = user.getString('tax_id')
+      if (taxId) {
+        company = $app.findFirstRecordByFilter('companies', 'tax_id = {:tax}', { tax: taxId })
+        if (company) companyId = company.id
+      }
     } catch (_) {}
   }
 
@@ -157,6 +180,75 @@ onRecordAfterCreateSuccess((e) => {
     $app.save(log)
   } catch (logErr) {
     $app.logger().error('Failed to save sync log', 'error', String(logErr))
+  }
+
+  // Se criada com status ativo/trialing, também garantir chamada no formato estrito do contrato
+  const subStatus = sub.getString('status')
+  if (subStatus === 'active' || subStatus === 'trialing') {
+    let ownerUserId = user.id
+    if (user.getString('role') !== 'User_owner' && companyId) {
+      try {
+        const ownerUser = $app.findFirstRecordByFilter(
+          'users',
+          'company_id = {:comp} && role = "User_owner"',
+          { comp: companyId },
+        )
+        if (ownerUser) ownerUserId = ownerUser.id
+      } catch (_) {}
+    }
+
+    const activationPayload = {
+      hub_user_id: ownerUserId,
+      hub_company_id: companyId,
+      company: { status: 'active' },
+    }
+
+    let actStatus = 'success'
+    let actErrorMessage = ''
+
+    try {
+      const resAct = $http.send({
+        url: endpoint,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Secret': secret || '',
+          Authorization: secret ? `Bearer ${secret}` : '',
+        },
+        body: JSON.stringify(activationPayload),
+        timeout: 10,
+      })
+
+      let resActText = ''
+      try {
+        if (resAct.json) {
+          resActText = JSON.stringify(resAct.json)
+        } else if (resAct.body) {
+          resActText = new TextDecoder().decode(resAct.body)
+        }
+      } catch (_) {}
+
+      if (resAct.statusCode < 200 || resAct.statusCode >= 300) {
+        actStatus = 'failed'
+        actErrorMessage = `[Ativação Assinatura] HTTP ${resAct.statusCode} | Response: ${resActText}`
+      } else {
+        actErrorMessage = `[Ativação Assinatura] HTTP ${resAct.statusCode} OK (company.status=active)`
+      }
+    } catch (errAct) {
+      actStatus = 'failed'
+      actErrorMessage = `[Ativação Assinatura] Erro: ${errAct.message || String(errAct)}`
+    }
+
+    try {
+      const logsCol = $app.findCollectionByNameOrId('sync_logs')
+      const logAct = new Record(logsCol)
+      logAct.set('subscription_id', sub.id)
+      logAct.set('status', actStatus)
+      logAct.set('error_message', actErrorMessage)
+      $app.save(logAct)
+    } catch (logErr) {
+      $app.logger().error('Failed to save activation sync log', 'error', String(logErr))
+    }
   }
 
   return e.next()
