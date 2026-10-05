@@ -25,8 +25,9 @@ onRecordAfterCreateSuccess((e) => {
 
   let htmlContent = `<p>Olá,</p><p>Bem-vindo ao Elektra HUB! Clique no link abaixo para verificar seu email e ativar sua conta:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
 
-  if (!isOwner) {
-    htmlContent = `<p>Olá,</p><p>Você foi convidado para participar da equipe no Elektra HUB! Clique no link abaixo para ativar sua conta e definir sua senha de acesso:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`
+  // Se for colaborador (User_employee), não exige confirmação de email
+  if (!isOwner && user.getString('role') === 'User_employee') {
+    return e.next()
   }
 
   try {
@@ -40,9 +41,7 @@ onRecordAfterCreateSuccess((e) => {
       body: JSON.stringify({
         from: 'Elektra HUB <notificacao@elektrasolucoes.tech>',
         to: email,
-        subject: user.getBool('is_owner')
-          ? 'Confirme seu email - Elektra HUB'
-          : 'Convite para Equipe - Elektra HUB',
+        subject: 'Confirme seu email - Elektra HUB',
         html: htmlContent,
       }),
       timeout: 10,

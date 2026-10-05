@@ -28,8 +28,9 @@ import {
 } from '@/components/ui/table'
 import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Edit2, ShieldAlert, Ban } from 'lucide-react'
+import { ArrowLeft, Plus, Edit2, ShieldAlert, Ban, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 
 export default function SubscriptionDetail() {
   const { id } = useParams<{ id: string }>()
@@ -43,6 +44,10 @@ export default function SubscriptionDetail() {
   const [editingSub, setEditingSub] = useState<any>(null)
   const [editStatus, setEditStatus] = useState('')
   const [editMaxUsers, setEditMaxUsers] = useState(1)
+  const [pricingTiers, setPricingTiers] = useState<any[]>([])
+  const [companyEmployees, setCompanyEmployees] = useState<any[]>([])
+  const [companyAccess, setCompanyAccess] = useState<any[]>([])
+  const [managingAccessMod, setManagingAccessMod] = useState<any>(null)
 
   // New sub state
   const [isNewOpen, setIsNewOpen] = useState(false)
@@ -57,16 +62,35 @@ export default function SubscriptionDetail() {
     try {
       if (!id) return
       setLoading(true)
-      const [u, subs, mods] = await Promise.all([
-        pb.collection('users').getOne(id),
+      const u = await pb.collection('users').getOne(id)
+      setUser(u)
+
+      const [subs, mods, tiers] = await Promise.all([
         pb
           .collection('subscriptions')
           .getFullList({ filter: `user_id="${id}"`, expand: 'module_id' }),
         pb.collection('modules').getFullList(),
+        pb.collection('module_pricing_tiers').getFullList({ sort: 'max_users' }),
       ])
-      setUser(u)
+
+      let emps: any[] = []
+      let accs: any[] = []
+      if (u.company_id) {
+        ;[emps, accs] = await Promise.all([
+          pb.collection('users').getFullList({
+            filter: `company_id = "${u.company_id}" && role = "User_employee" && active = true`,
+          }),
+          pb.collection('employee_access').getFullList({
+            filter: `company_id = "${u.company_id}"`,
+          }),
+        ])
+      }
+
       setSubscriptions(subs)
       setModules(mods)
+      setPricingTiers(tiers)
+      setCompanyEmployees(emps)
+      setCompanyAccess(accs)
     } catch (err) {
       toast.error('Erro ao carregar detalhes')
       navigate('/admin/assinaturas')
@@ -82,9 +106,17 @@ export default function SubscriptionDetail() {
   const handleUpdateSub = async () => {
     try {
       setSaving(true)
+      const modTiers = pricingTiers
+        .filter((t) => t.module_id === editingSub.module_id)
+        .sort((a, b) => a.max_users - b.max_users)
+      const matchedTier =
+        modTiers.find((t) => t.max_users >= editMaxUsers) || modTiers[modTiers.length - 1]
+      const newPrice = matchedTier ? matchedTier.price : editingSub.price || 0
+
       await pb.collection('subscriptions').update(editingSub.id, {
         status: editStatus,
         max_users: editMaxUsers,
+        price: newPrice,
       })
       toast.success('Assinatura atualizada!')
       setEditingSub(null)
@@ -122,12 +154,20 @@ export default function SubscriptionDetail() {
 
       const mod = modules.find((m) => m.id === newModuleId)
 
+      // Calcula preço baseado na faixa de preço se houver
+      const modTiers = pricingTiers
+        .filter((t) => t.module_id === newModuleId)
+        .sort((a, b) => a.max_users - b.max_users)
+      const matchedTier =
+        modTiers.find((t) => t.max_users >= newMaxUsers) || modTiers[modTiers.length - 1]
+      const tierPrice = matchedTier ? matchedTier.price : mod?.base_price || 0
+
       await pb.collection('subscriptions').create({
         user_id: user.id,
         module_id: newModuleId,
         status: 'active',
         max_users: newMaxUsers,
-        price: mod?.base_price || 0,
+        price: tierPrice,
       })
       toast.success('Acesso concedido com sucesso!')
       setIsNewOpen(false)
@@ -232,10 +272,34 @@ export default function SubscriptionDetail() {
                         {sub.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>R$ {sub.price?.toFixed(2).replace('.', ',') || '0,00'}</TableCell>
-                    <TableCell>{sub.max_users || 1}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>R$ {sub.price?.toFixed(2).replace('.', ',') || '0,00'}</span>
+                        {pricingTiers.some((t) => t.module_id === sub.module_id) && (
+                          <span className="text-[10px] text-primary">Faixa dinâmica</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold">
+                          {companyAccess.filter((a) => a.module_id === sub.module_id).length}
+                        </span>
+                        <span className="text-muted-foreground">/ {sub.max_users || 1}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setManagingAccessMod(sub)}
+                          className="gap-1.5"
+                          title="Gerenciar colaboradores com acesso a este módulo"
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                          Colaboradores
+                        </Button>
                         {sub.status !== 'canceled' && (
                           <Button
                             variant="destructive"
@@ -243,7 +307,7 @@ export default function SubscriptionDetail() {
                             onClick={() => setCancelingSub(sub)}
                           >
                             <Ban className="h-3 w-3 mr-1" />
-                            Cancelar Assinatura
+                            Cancelar
                           </Button>
                         )}
                         <Button
@@ -387,6 +451,87 @@ export default function SubscriptionDetail() {
             <Button onClick={handleCreateSub} disabled={saving || !newModuleId}>
               {saving ? 'Salvando...' : 'Confirmar Acesso'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Gestão de Colaboradores por Módulo */}
+      <Dialog open={!!managingAccessMod} onOpenChange={(val) => !val && setManagingAccessMod(null)}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>
+              Colaboradores no Módulo: {managingAccessMod?.expand?.module_id?.name}
+            </DialogTitle>
+            <CardDescription>
+              Limite da faixa contratada: {managingAccessMod?.max_users || 1} colaborador(es).
+              Atualmente associados:{' '}
+              {companyAccess.filter((a) => a.module_id === managingAccessMod?.module_id).length}
+            </CardDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+            {companyEmployees.length === 0 ? (
+              <p className="text-sm text-center py-6 text-muted-foreground">
+                Nenhum colaborador cadastrado na empresa do assinante.
+              </p>
+            ) : (
+              companyEmployees.map((emp) => {
+                const access = companyAccess.find(
+                  (a) => a.employee_id === emp.id && a.module_id === managingAccessMod?.module_id,
+                )
+                const isAssigned = !!access
+                const currentCount = companyAccess.filter(
+                  (a) => a.module_id === managingAccessMod?.module_id,
+                ).length
+                const limit = managingAccessMod?.max_users || 1
+
+                const handleToggle = async (checked: boolean) => {
+                  try {
+                    if (checked) {
+                      if (currentCount >= limit) {
+                        toast.error(
+                          `Limite da faixa atingido (${currentCount}/${limit}). Aumente o limite de usuários desta assinatura para adicionar mais colaboradores.`,
+                        )
+                        return
+                      }
+                      await pb.collection('employee_access').create({
+                        employee_id: emp.id,
+                        module_id: managingAccessMod.module_id,
+                        company_id: user.company_id,
+                        role_company: 'user',
+                      })
+                      toast.success(`Acesso concedido a ${emp.name}`)
+                    } else if (access) {
+                      await pb.collection('employee_access').delete(access.id)
+                      toast.success(`Acesso removido de ${emp.name}`)
+                    }
+                    loadData()
+                  } catch (e: any) {
+                    toast.error(e.message || 'Erro ao alterar permissão')
+                  }
+                }
+
+                return (
+                  <div
+                    key={emp.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/40 transition-colors"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{emp.name}</p>
+                      <p className="text-xs text-muted-foreground">{emp.email}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground">
+                        {isAssigned ? 'Com acesso' : 'Sem acesso'}
+                      </span>
+                      <Switch checked={isAssigned} onCheckedChange={handleToggle} />
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setManagingAccessMod(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

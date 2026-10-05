@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T20:23:03.193Z",
+  "generatedAt": "2026-10-05T00:48:14.441Z",
   "collections": [
     {
       "name": "users",
@@ -601,6 +601,55 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "module_pricing_tiers",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.auth.role = 'Admin'",
+        "update": "@request.auth.id != '' && @request.auth.role = 'Admin'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'Admin'"
+      },
+      "fields": [
+        {
+          "name": "module_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "modules"
+        },
+        {
+          "name": "max_users",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "price",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_module_pricing_tiers_mod ON module_pricing_tiers (module_id, max_users)"
+      ]
     }
   ]
 }

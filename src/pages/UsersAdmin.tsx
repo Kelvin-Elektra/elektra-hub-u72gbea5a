@@ -111,10 +111,21 @@ export default function UsersAdmin() {
 
     setLoading(true)
     try {
+      const cleanEmail = createData.email.trim().toLowerCase()
+      // Verificação em toda a base de usuários do HUB
+      const existing = await pb.collection('users').getList(1, 1, {
+        filter: `email = "${cleanEmail}"`,
+      })
+      if (existing.items.length > 0) {
+        toast.error('Este e-mail já está cadastrado no HUB.')
+        setLoading(false)
+        return
+      }
+
       const selectedCompany = companies.find((c) => c.id === createData.company_id)
       const dataToSubmit = {
-        name: createData.name,
-        email: createData.email,
+        name: createData.name.trim(),
+        email: cleanEmail,
         role: createData.role || 'User_employee',
         company_id: createData.company_id || '',
         company_name: selectedCompany ? selectedCompany.name : '',
@@ -124,7 +135,11 @@ export default function UsersAdmin() {
         active: true,
       }
       await pb.collection('users').create(dataToSubmit)
-      toast.success('Usuário criado com sucesso.')
+      toast.success(
+        createData.role === 'User_employee'
+          ? 'Colaborador criado com sucesso.'
+          : 'Usuário criado com sucesso.',
+      )
       setIsCreateOpen(false)
       setCreateData({
         name: '',
@@ -136,8 +151,13 @@ export default function UsersAdmin() {
         passwordConfirm: '',
       })
       loadData()
-    } catch (e) {
-      toast.error(getErrorMessage(e))
+    } catch (e: any) {
+      const msg = getErrorMessage(e)
+      if (msg.includes('unique') || msg.includes('already exists') || msg.includes('cadastrado')) {
+        toast.error('Este e-mail já está cadastrado no HUB.')
+      } else {
+        toast.error(msg)
+      }
     }
     setLoading(false)
   }
@@ -202,7 +222,7 @@ export default function UsersAdmin() {
         return <Badge variant="secondary">Proprietário (User_owner)</Badge>
       case 'User_employee':
       default:
-        return <Badge variant="outline">Funcionário (User_employee)</Badge>
+        return <Badge variant="outline">Colaborador (User_employee)</Badge>
     }
   }
 
@@ -347,7 +367,7 @@ export default function UsersAdmin() {
                   <SelectContent>
                     <SelectItem value="Admin">Administrador</SelectItem>
                     <SelectItem value="User_owner">Proprietário (User_owner)</SelectItem>
-                    <SelectItem value="User_employee">Funcionário (User_employee)</SelectItem>
+                    <SelectItem value="User_employee">Colaborador (User_employee)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -462,7 +482,7 @@ export default function UsersAdmin() {
                   <SelectContent>
                     <SelectItem value="Admin">Administrador</SelectItem>
                     <SelectItem value="User_owner">Proprietário (User_owner)</SelectItem>
-                    <SelectItem value="User_employee">Funcionário (User_employee)</SelectItem>
+                    <SelectItem value="User_employee">Colaborador (User_employee)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

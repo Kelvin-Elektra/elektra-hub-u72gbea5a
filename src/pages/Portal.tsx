@@ -43,6 +43,7 @@ export default function Portal() {
   const [errorData, setErrorData] = useState<string | null>(null)
 
   const [modules, setModules] = useState<Module[]>([])
+  const [pricingTiers, setPricingTiers] = useState<any[]>([])
   const [subscriptions, setSubscriptions] = useState<PortalSubscription[]>([])
   const [company, setCompany] = useState<any>(null)
 
@@ -123,7 +124,13 @@ export default function Portal() {
       setErrorData(null)
       const isOwner = user.role === 'User_owner'
 
-      const promises: Promise<any>[] = [getModules()]
+      const promises: Promise<any>[] = [
+        getModules(),
+        pb
+          .collection('module_pricing_tiers')
+          .getFullList({ sort: 'max_users' })
+          .catch(() => []),
+      ]
 
       if (isOwner) {
         promises.push(getUserSubscriptions(user.id))
@@ -141,7 +148,6 @@ export default function Portal() {
             .catch(() => []),
         )
       }
-
       if (user.company_id) {
         promises.push(
           pb
@@ -155,19 +161,21 @@ export default function Portal() {
 
       const results = await Promise.all(promises)
       const mods = results[0]
-      const userAccessData = results[1]
+      const tiers = results[1] || []
+      const userAccessData = results[2]
 
       let companySubs: any[] = []
       let comp = null
 
       if (isOwner) {
-        comp = results[2]
-      } else {
-        companySubs = results[2] || []
         comp = results[3]
+      } else {
+        companySubs = results[3] || []
+        comp = results[4]
       }
 
       setModules(mods.filter((m: Module) => m.status === 'active'))
+      setPricingTiers(tiers)
       setCompany(comp)
 
       if (isOwner) {
@@ -440,7 +448,13 @@ export default function Portal() {
                 </div>
                 <CardTitle className="mt-4">{mod.name}</CardTitle>
                 <CardDescription>
-                  R$ {mod.base_price.toFixed(2).replace('.', ',')} / mês
+                  {sub && sub.price ? (
+                    <span>
+                      R$ {Number(sub.price).toFixed(2).replace('.', ',')} / mês (faixa contratada)
+                    </span>
+                  ) : (
+                    <span>A partir de R$ {mod.base_price.toFixed(2).replace('.', ',')} / mês</span>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1 space-y-4">
@@ -459,6 +473,28 @@ export default function Portal() {
                   <p className="text-sm text-muted-foreground">
                     Ative este módulo para acessar funcionalidades exclusivas do {mod.name}.
                   </p>
+                )}
+
+                {/* Exibição das faixas de preço se existirem */}
+                {pricingTiers.filter((t) => t.module_id === mod.id).length > 0 && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-1">
+                    <p className="text-[11px] font-semibold text-slate-800">
+                      Planos por quantidade de colaboradores:
+                    </p>
+                    <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-600">
+                      {pricingTiers
+                        .filter((t) => t.module_id === mod.id)
+                        .sort((a, b) => a.max_users - b.max_users)
+                        .map((t) => (
+                          <div key={t.id} className="flex justify-between py-0.5">
+                            <span>Até {t.max_users} usuários:</span>
+                            <span className="font-semibold text-primary">
+                              R$ {Number(t.price).toFixed(2).replace('.', ',')}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
                 )}
 
                 {canAccess && (

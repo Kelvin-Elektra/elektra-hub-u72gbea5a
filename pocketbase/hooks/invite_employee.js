@@ -21,25 +21,26 @@ routerAdd(
     try {
       const usersCol = $app.findCollectionByNameOrId('users')
       try {
-        $app.findAuthRecordByEmail('users', email)
-        return e.badRequestError('Este usuário já possui cadastro.')
+        $app.findAuthRecordByEmail('users', email.trim().toLowerCase())
+        return e.badRequestError('Este e-mail já está cadastrado no HUB.')
       } catch (_) {}
 
       const record = new Record(usersCol)
-      record.setEmail(email)
+      record.setEmail(email.trim().toLowerCase())
       const tempPass = $security.randomString(12) + 'A1!'
       record.setPassword(tempPass)
-      record.set('name', name)
+      record.setVerified(true)
+      record.set('name', name.trim())
       record.set('phone', phone)
       record.set('company_id', companyId)
       record.set('role', 'User_employee')
-      record.set('active', false)
+      record.set('active', true)
 
       $app.save(record)
 
-      return e.json(200, { message: 'Funcionário convidado com sucesso.', id: record.id })
+      return e.json(200, { message: 'Colaborador cadastrado com sucesso.', id: record.id })
     } catch (err) {
-      return e.internalServerError('Erro ao convidar: ' + String(err))
+      return e.internalServerError('Erro ao cadastrar colaborador: ' + String(err))
     }
   },
   $apis.requireAuth(),

@@ -72,32 +72,48 @@ export default function Team() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsInviting(true)
+    const cleanEmail = inviteEmail.trim().toLowerCase()
     try {
+      // Pré-verificação no client para feedback imediato
+      const existing = await pb.collection('users').getList(1, 1, {
+        filter: `email = "${cleanEmail}"`,
+      })
+      if (existing.items.length > 0) {
+        toast.error('Este e-mail já está cadastrado no HUB.')
+        setIsInviting(false)
+        return
+      }
+
       await pb.send('/backend/v1/invite-employee', {
         method: 'POST',
-        body: JSON.stringify({ name: inviteName, email: inviteEmail, phone: invitePhone }),
+        body: JSON.stringify({ name: inviteName.trim(), email: cleanEmail, phone: invitePhone }),
       })
-      toast.success('Convite enviado com sucesso!')
+      toast.success('Colaborador adicionado com sucesso!')
       setIsInviteOpen(false)
       setInviteName('')
       setInviteEmail('')
       setInvitePhone('')
       loadData()
     } catch (err: any) {
-      toast.error(err.response?.message || 'Erro ao enviar convite.')
+      const msg = err.response?.message || err.message || 'Erro ao adicionar colaborador.'
+      if (msg.includes('cadastrado') || msg.includes('unique')) {
+        toast.error('Este e-mail já está cadastrado no HUB.')
+      } else {
+        toast.error(msg)
+      }
     } finally {
       setIsInviting(false)
     }
   }
 
   const handleRemoveEmployee = async (id: string) => {
-    if (!confirm('Deseja realmente remover este funcionário? O acesso dele será revogado.')) return
+    if (!confirm('Deseja realmente remover este colaborador? O acesso dele será revogado.')) return
     try {
       await pb.collection('users').update(id, { active: false })
-      toast.success('Funcionário removido.')
+      toast.success('Colaborador removido.')
       loadData()
     } catch (err) {
-      toast.error('Erro ao remover funcionário.')
+      toast.error('Erro ao remover colaborador.')
     }
   }
 
@@ -113,6 +129,17 @@ export default function Team() {
           await pb.collection('employee_access').delete(accessRecord.id)
         }
       } else {
+        // Checar limite de colaboradores do módulo nesta assinatura
+        const sub = subscriptions.find((s) => s.module_id === moduleId)
+        const currentCount = employeeAccess.filter((a) => a.module_id === moduleId).length
+        const maxLimit = sub?.max_users || 1
+        if (currentCount >= maxLimit) {
+          toast.error(
+            `Limite da faixa atingido (${currentCount}/${maxLimit} colaboradores). Faça upgrade da faixa para associar mais colaboradores.`,
+          )
+          return
+        }
+
         // Grant access (default to 'user' role_company)
         await pb.collection('employee_access').create({
           employee_id: manageUser.id,
@@ -122,8 +149,8 @@ export default function Team() {
         })
       }
       loadData()
-    } catch (err) {
-      toast.error('Erro ao atualizar permissão.')
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar permissão.')
     }
   }
 
@@ -143,19 +170,19 @@ export default function Team() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Equipe</h1>
           <p className="text-muted-foreground">
-            Gerencie o acesso dos seus funcionários aos módulos.
+            Gerencie o acesso dos seus colaboradores aos módulos.
           </p>
         </div>
         <Button onClick={() => setIsInviteOpen(true)} className="gap-2">
-          <UserPlus className="h-4 w-4" /> Convidar Funcionário
+          <UserPlus className="h-4 w-4" /> Novo Colaborador
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Membros da Equipe</CardTitle>
+          <CardTitle>Colaboradores da Equipe</CardTitle>
           <CardDescription>
-            Funcionários associados à sua empresa (Company ID:{' '}
+            Colaboradores vinculados à sua empresa (Company ID:{' '}
             <Badge variant="secondary">{user?.company_id}</Badge>)
           </CardDescription>
         </CardHeader>
@@ -173,7 +200,7 @@ export default function Team() {
               {employees.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                    Nenhum funcionário encontrado. Convide sua equipe para começar.
+                    Nenhum colaborador encontrado. Adicione membros à sua equipe.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -219,33 +246,38 @@ export default function Team() {
         <DialogContent>
           <form onSubmit={handleInvite}>
             <DialogHeader>
-              <DialogTitle>Convidar Funcionário</DialogTitle>
+              <DialogTitle>Adicionar Colaborador</DialogTitle>
               <DialogDescription>
-                O funcionário receberá um e-mail com instruções para ativar a conta e definir a
-                senha.
+                O colaborador terá acesso imediato sem necessidade de confirmação por e-mail.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Nome</Label>
+                <Label>Nome *</Label>
                 <Input
                   required
+                  placeholder="Nome do colaborador"
                   value={inviteName}
                   onChange={(e) => setInviteName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>E-mail</Label>
+                <Label>E-mail *</Label>
                 <Input
                   type="email"
                   required
+                  placeholder="colaborador@empresa.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Telefone (Opcional)</Label>
-                <Input value={invitePhone} onChange={(e) => setInvitePhone(e.target.value)} />
+                <Input
+                  placeholder="(00) 00000-0000"
+                  value={invitePhone}
+                  onChange={(e) => setInvitePhone(e.target.value)}
+                />
               </div>
             </div>
             <DialogFooter>
@@ -253,7 +285,7 @@ export default function Team() {
                 Cancelar
               </Button>
               <Button type="submit" disabled={isInviting}>
-                {isInviting ? 'Enviando...' : 'Enviar Convite'}
+                {isInviting ? 'Salvando...' : 'Adicionar Colaborador'}
               </Button>
             </DialogFooter>
           </form>

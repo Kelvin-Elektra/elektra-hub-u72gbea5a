@@ -45,6 +45,7 @@ export default function Auth() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [activeModules, setActiveModules] = useState<any[]>([])
 
   useEffect(() => {
     pb.collection('settings')
@@ -53,6 +54,14 @@ export default function Auth() {
         if (settings.logo) {
           setLogoUrl(pb.files.getURL(settings, settings.logo))
         }
+      })
+      .catch(() => {})
+
+    // Buscar módulos ativos para exibir flutuando na tela de login
+    pb.collection('modules')
+      .getFullList({ filter: 'status = "active"' })
+      .then((records) => {
+        setActiveModules(records)
       })
       .catch(() => {})
   }, [])
@@ -286,10 +295,90 @@ export default function Auth() {
     setFieldErrors({})
   }
 
+  // Posições e estilos variados para os módulos flutuantes
+  const floatingStyles = [
+    {
+      top: '10%',
+      left: '8%',
+      anim: 'animate-float-slow',
+      size: 'w-24 h-24',
+      opacity: 'opacity-25',
+    },
+    {
+      top: '18%',
+      right: '10%',
+      anim: 'animate-float-medium',
+      size: 'w-28 h-28',
+      opacity: 'opacity-30',
+    },
+    {
+      bottom: '15%',
+      left: '12%',
+      anim: 'animate-float-fast',
+      size: 'w-20 h-20',
+      opacity: 'opacity-20',
+    },
+    {
+      bottom: '12%',
+      right: '14%',
+      anim: 'animate-float-slow',
+      size: 'w-24 h-24',
+      opacity: 'opacity-25',
+    },
+    {
+      top: '48%',
+      left: '4%',
+      anim: 'animate-float-medium',
+      size: 'w-16 h-16',
+      opacity: 'opacity-20',
+    },
+    {
+      top: '52%',
+      right: '5%',
+      anim: 'animate-float-fast',
+      size: 'w-20 h-20',
+      opacity: 'opacity-25',
+    },
+  ]
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-white p-4 py-12 relative overflow-hidden">
+      {/* Logos dos módulos ativos flutuando no background da tela de login */}
+      {isLogin && activeModules.length > 0 && (
+        <div className="absolute inset-0 pointer-events-none select-none z-0 overflow-hidden">
+          {activeModules.map((mod, index) => {
+            const styleCfg = floatingStyles[index % floatingStyles.length]
+            const logoSrc = mod.logo ? pb.files.getURL(mod, mod.logo) : null
+
+            return (
+              <div
+                key={mod.id || index}
+                style={{
+                  top: styleCfg.top,
+                  bottom: (styleCfg as any).bottom,
+                  left: styleCfg.left,
+                  right: (styleCfg as any).right,
+                }}
+                className={`absolute ${styleCfg.anim} ${styleCfg.opacity} transition-all hidden sm:flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50/80 border border-slate-200/60 shadow-sm backdrop-blur-[1px]`}
+              >
+                {logoSrc ? (
+                  <img src={logoSrc} alt={mod.name} className="max-h-12 max-w-16 object-contain" />
+                ) : (
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                    {mod.name?.charAt(0) || 'M'}
+                  </div>
+                )}
+                <span className="text-[10px] font-medium text-slate-600 mt-1 truncate max-w-[80px]">
+                  {mod.name}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       <Card
-        className={`w-full ${isLogin ? 'max-w-md' : 'max-w-2xl'} bg-card border-border shadow-md`}
+        className={`w-full ${isLogin ? 'max-w-md' : 'max-w-2xl'} bg-white border border-border shadow-xl relative z-10`}
       >
         <CardHeader className="space-y-2 text-center">
           {isLogin && (
