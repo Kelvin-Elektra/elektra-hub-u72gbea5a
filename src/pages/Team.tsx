@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { UserPlus, Shield, Trash2 } from 'lucide-react'
+import { UserPlus, Shield, Trash2, Copy, Check, Key } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
@@ -36,8 +36,20 @@ export default function Team() {
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePassword, setInvitePassword] = useState('')
   const [invitePhone, setInvitePhone] = useState('')
   const [isInviting, setIsInviting] = useState(false)
+
+  // Armazenamento em memória das senhas cadastradas recentemente para cópia facilitada
+  const [savedPasswords, setSavedPasswords] = useState<Record<string, string>>(() => {
+    try {
+      const stored = sessionStorage.getItem('elektra_team_passwords')
+      return stored ? JSON.parse(stored) : {}
+    } catch (_) {
+      return {}
+    }
+  })
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const [manageUser, setManageUser] = useState<any>(null)
 
@@ -73,6 +85,13 @@ export default function Team() {
     e.preventDefault()
     setIsInviting(true)
     const cleanEmail = inviteEmail.trim().toLowerCase()
+
+    if (invitePassword && invitePassword.length < 8) {
+      toast.error('A senha deve ter no mínimo 8 caracteres.')
+      setIsInviting(false)
+      return
+    }
+
     try {
       // Pré-verificação no client para feedback imediato
       const existing = await pb.collection('users').getList(1, 1, {
@@ -84,14 +103,32 @@ export default function Team() {
         return
       }
 
-      await pb.send('/backend/v1/invite-employee', {
+      const res = await pb.send('/backend/v1/invite-employee', {
         method: 'POST',
-        body: JSON.stringify({ name: inviteName.trim(), email: cleanEmail, phone: invitePhone }),
+        body: JSON.stringify({
+          name: inviteName.trim(),
+          email: cleanEmail,
+          password: invitePassword.trim(),
+          phone: invitePhone,
+        }),
       })
+
+      // Salva a senha temporariamente em cache para o botão "copiar credenciais"
+      if (res.password && cleanEmail) {
+        const updated = { ...savedPasswords, [cleanEmail]: res.password }
+        setSavedPasswords(updated)
+        try {
+          sessionStorage.setItem('elektra_team_passwords', JSON.stringify(updated))
+        } catch {
+          /* intentionally ignored */
+        }
+      }
+
       toast.success('Colaborador adicionado com sucesso!')
       setIsInviteOpen(false)
       setInviteName('')
       setInviteEmail('')
+      setInvitePassword('')
       setInvitePhone('')
       loadData()
     } catch (err: any) {
@@ -104,6 +141,22 @@ export default function Team() {
     } finally {
       setIsInviting(false)
     }
+  }
+
+  const handleCopyCredentials = (emp: any) => {
+    const hubUrl = window.location.origin.includes('localhost')
+      ? 'https://hub.elektrasolucoes.tech'
+      : window.location.origin
+    const empEmail = emp.email || emp.username || ''
+    const password =
+      savedPasswords[empEmail?.toLowerCase()] || '[Senha cadastrada pelo administrador]'
+
+    const text = `Credenciais de Acesso - Elektra HUB:\n\nNome: ${emp.name}\nE-mail: ${empEmail}\nSenha: ${password}\n\nLink de Acesso: ${hubUrl}`
+
+    navigator.clipboard.writeText(text)
+    setCopiedId(emp.id)
+    toast.success('Credenciais copiadas para a área de transferência!')
+    setTimeout(() => setCopiedId(null), 2500)
   }
 
   const handleRemoveEmployee = async (id: string) => {
@@ -212,27 +265,52 @@ export default function Team() {
                 employees.map((emp) => (
                   <TableRow key={emp.id}>
                     <TableCell className="font-medium">{emp.name}</TableCell>
-                    <TableCell>{emp.email}</TableCell>
+                    <TableCell>
+                      <span className="font-medium text-foreground">
+                        {emp.email || emp.username || 'Sem e-mail'}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={emp.active ? 'default' : 'secondary'}>
                         {emp.active ? 'Ativo' : 'Pendente'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopyCredentials(emp)}
+                          className="gap-1.5 text-xs h-8"
+                          title="Copiar credenciais de acesso e link do HUB para o colaborador"
+                        >
+                          {copiedId === emp.id ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 text-green-600" />
+                              <span className="text-green-600">Copiado</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5" />
+                              <span>Copiar Credenciais</span>
+                            </>
+                          )}
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setManageUser(emp)}
                           disabled={!emp.active}
+                          className="h-8 text-xs"
                         >
-                          <Shield className="h-4 w-4 mr-2" /> Permissões
+                          <Shield className="h-3.5 w-3.5 mr-1.5" /> Permissões
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleRemoveEmployee(emp.id)}
-                          className="text-destructive hover:bg-destructive/10"
+                          className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                          title="Remover colaborador"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -274,6 +352,21 @@ export default function Team() {
                   placeholder="colaborador@empresa.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Senha de Acesso *</Label>
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <Key className="h-3 w-3" /> Mín. 8 caracteres
+                  </span>
+                </div>
+                <Input
+                  type="password"
+                  required
+                  placeholder="Defina a senha inicial do colaborador"
+                  value={invitePassword}
+                  onChange={(e) => setInvitePassword(e.target.value)}
                 />
               </div>
               <div className="space-y-2">

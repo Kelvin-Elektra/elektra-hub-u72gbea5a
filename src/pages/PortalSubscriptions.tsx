@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { formatCurrencyBRL } from '@/lib/formatters'
 
 export default function PortalSubscriptions() {
   const { user } = useAuth()
@@ -101,6 +102,7 @@ export default function PortalSubscriptions() {
               <TableRow>
                 <TableHead>Módulo</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Valor Mensal</TableHead>
                 <TableHead>Próxima Fatura</TableHead>
                 <TableHead>Lim. Usuários</TableHead>
               </TableRow>
@@ -141,6 +143,9 @@ export default function PortalSubscriptions() {
                       <Badge variant={getStatusVariant(sub.status)}>
                         {translateStatus(sub.status)}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="font-semibold text-foreground">
+                      {formatCurrencyBRL(sub.price)}
                     </TableCell>
                     <TableCell>
                       {sub.next_billing_date

@@ -24,6 +24,7 @@ import { Eye, Search } from 'lucide-react'
 import { useRealtime } from '@/hooks/use-realtime'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { formatCurrencyBRL } from '@/lib/formatters'
 
 export default function Subscriptions() {
   const [subscriptions, setSubscriptions] = useState<any[]>([])
@@ -123,7 +124,7 @@ export default function Subscriptions() {
               <SelectContent>
                 <SelectItem value="all">Todos os Papéis</SelectItem>
                 <SelectItem value="User_owner">Proprietários (User_owner)</SelectItem>
-                <SelectItem value="User_employee">Funcionários (User_employee)</SelectItem>
+                <SelectItem value="User_employee">Colaboradores (User_employee)</SelectItem>{' '}
               </SelectContent>
             </Select>
           </div>
@@ -165,7 +166,9 @@ export default function Subscriptions() {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {s.expand?.user_id?.email} •{' '}
-                        {s.expand?.user_id?.role === 'User_owner' ? 'Proprietário' : 'Funcionário'}
+                        {s.expand?.user_id?.role === 'User_owner'
+                          ? 'Proprietário'
+                          : 'Colaborador'}{' '}
                       </div>
                     </TableCell>
                     <TableCell>{s.expand?.module_id?.name || '-'}</TableCell>
@@ -175,13 +178,8 @@ export default function Subscriptions() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {s.price !== undefined && s.price !== null
-                        ? new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          }).format(s.price)
-                        : '-'}
-                    </TableCell>
+                      {s.price !== undefined && s.price !== null ? formatCurrencyBRL(s.price) : '-'}
+                    </TableCell>{' '}
                     <TableCell>
                       {s.next_billing_date
                         ? format(new Date(s.next_billing_date), 'dd/MM/yyyy', { locale: ptBR })

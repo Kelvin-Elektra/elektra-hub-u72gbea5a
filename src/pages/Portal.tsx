@@ -28,7 +28,17 @@ import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
-import { Plug, CreditCard, Receipt, QrCode, ShoppingCart, Trash2, ExternalLink } from 'lucide-react'
+import {
+  Plug,
+  CreditCard,
+  Receipt,
+  QrCode,
+  ShoppingCart,
+  Trash2,
+  ExternalLink,
+  Users,
+} from 'lucide-react'
+import { formatCurrencyBRL } from '@/lib/formatters'
 
 type PortalSubscription = Subscription & { role_company?: string }
 
@@ -43,7 +53,6 @@ export default function Portal() {
   const [errorData, setErrorData] = useState<string | null>(null)
 
   const [modules, setModules] = useState<Module[]>([])
-  const [pricingTiers, setPricingTiers] = useState<any[]>([])
   const [subscriptions, setSubscriptions] = useState<PortalSubscription[]>([])
   const [company, setCompany] = useState<any>(null)
 
@@ -124,13 +133,7 @@ export default function Portal() {
       setErrorData(null)
       const isOwner = user.role === 'User_owner'
 
-      const promises: Promise<any>[] = [
-        getModules(),
-        pb
-          .collection('module_pricing_tiers')
-          .getFullList({ sort: 'max_users' })
-          .catch(() => []),
-      ]
+      const promises: Promise<any>[] = [getModules()]
 
       if (isOwner) {
         promises.push(getUserSubscriptions(user.id))
@@ -161,21 +164,19 @@ export default function Portal() {
 
       const results = await Promise.all(promises)
       const mods = results[0]
-      const tiers = results[1] || []
-      const userAccessData = results[2]
+      const userAccessData = results[1]
 
       let companySubs: any[] = []
       let comp = null
 
       if (isOwner) {
-        comp = results[3]
+        comp = results[2]
       } else {
-        companySubs = results[3] || []
-        comp = results[4]
+        companySubs = results[2] || []
+        comp = results[3]
       }
 
       setModules(mods.filter((m: Module) => m.status === 'active'))
-      setPricingTiers(tiers)
       setCompany(comp)
 
       if (isOwner) {
@@ -449,11 +450,12 @@ export default function Portal() {
                 <CardTitle className="mt-4">{mod.name}</CardTitle>
                 <CardDescription>
                   {sub && sub.price ? (
-                    <span>
-                      R$ {Number(sub.price).toFixed(2).replace('.', ',')} / mês (faixa contratada)
+                    <span className="font-semibold text-foreground">
+                      {formatCurrencyBRL(sub.price)} / mês ({sub.max_users || 1} usuário
+                      {sub.max_users && sub.max_users > 1 ? 's' : ''})
                     </span>
                   ) : (
-                    <span>A partir de R$ {mod.base_price.toFixed(2).replace('.', ',')} / mês</span>
+                    <span>A partir de {formatCurrencyBRL(mod.base_price)} / mês</span>
                   )}
                 </CardDescription>
               </CardHeader>
@@ -475,27 +477,25 @@ export default function Portal() {
                   </p>
                 )}
 
-                {/* Exibição das faixas de preço se existirem */}
-                {pricingTiers.filter((t) => t.module_id === mod.id).length > 0 && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-1">
-                    <p className="text-[11px] font-semibold text-slate-800">
-                      Planos por quantidade de colaboradores:
-                    </p>
-                    <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-600">
-                      {pricingTiers
-                        .filter((t) => t.module_id === mod.id)
-                        .sort((a, b) => a.max_users - b.max_users)
-                        .map((t) => (
-                          <div key={t.id} className="flex justify-between py-0.5">
-                            <span>Até {t.max_users} usuários:</span>
-                            <span className="font-semibold text-primary">
-                              R$ {Number(t.price).toFixed(2).replace('.', ',')}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
+                {/* Exibição clara do novo modelo de preço: base + por usuário */}
+                <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center text-slate-700">
+                    <span className="font-medium flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5 text-primary" /> Valor base (1 usuário):
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      {formatCurrencyBRL(mod.base_price)}
+                    </span>
                   </div>
-                )}
+                  {Number((mod as any).price_per_user) > 0 && (
+                    <div className="flex justify-between items-center text-slate-600">
+                      <span>Por usuário adicional:</span>
+                      <span className="font-semibold text-primary">
+                        + {formatCurrencyBRL((mod as any).price_per_user)} / mês
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 {canAccess && (
                   <p className="text-xs text-muted-foreground font-medium bg-secondary/50 inline-block px-2 py-1 rounded">
@@ -582,7 +582,7 @@ export default function Portal() {
                 <div>
                   <p className="font-medium">{item.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    R$ {item.base_price.toFixed(2).replace('.', ',')} / mês
+                    {formatCurrencyBRL(item.base_price)} / mês
                   </p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.id)}>
@@ -602,11 +602,7 @@ export default function Portal() {
               <div className="flex justify-between font-bold text-lg mb-6">
                 <span>Total:</span>
                 <span>
-                  R${' '}
-                  {cart
-                    .reduce((acc, item) => acc + item.base_price, 0)
-                    .toFixed(2)
-                    .replace('.', ',')}
+                  {formatCurrencyBRL(cart.reduce((acc, item) => acc + item.base_price, 0))}
                 </span>
               </div>
               <Button
@@ -633,22 +629,14 @@ export default function Portal() {
                 <span>Você está assinando {cart.length} módulo(s).</span>
                 {appliedCoupon && appliedCoupon.type !== 'free_months' && (
                   <span>
-                    De{' '}
-                    <span className="line-through">R$ {subtotal.toFixed(2).replace('.', ',')}</span>{' '}
-                    por{' '}
-                    <strong className="text-foreground">
-                      R$ {total.toFixed(2).replace('.', ',')}
-                    </strong>{' '}
-                    / mês
+                    De <span className="line-through">{formatCurrencyBRL(subtotal)}</span> por{' '}
+                    <strong className="text-foreground">{formatCurrencyBRL(total)}</strong> / mês
                   </span>
                 )}
                 {!appliedCoupon && (
                   <span>
                     Total:{' '}
-                    <strong className="text-foreground">
-                      R$ {subtotal.toFixed(2).replace('.', ',')}
-                    </strong>{' '}
-                    / mês
+                    <strong className="text-foreground">{formatCurrencyBRL(subtotal)}</strong> / mês
                   </span>
                 )}
                 {appliedCoupon && appliedCoupon.type === 'free_months' && (
@@ -763,7 +751,7 @@ export default function Portal() {
                     {appliedCoupon.type === 'percentage' &&
                       ` (${appliedCoupon.value}% de desconto)`}
                     {appliedCoupon.type === 'fixed_amount' &&
-                      ` (- R$ ${appliedCoupon.value.toFixed(2).replace('.', ',')})`}
+                      ` (- ${formatCurrencyBRL(appliedCoupon.value)})`}
                     {appliedCoupon.type === 'free_months' &&
                       ` (${appliedCoupon.free_months} mês(es) grátis)`}
                   </p>

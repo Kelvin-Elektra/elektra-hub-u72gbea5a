@@ -298,57 +298,64 @@ export default function Auth() {
   // Posições e estilos variados para os módulos flutuantes
   const floatingStyles = [
     {
-      top: '10%',
-      left: '8%',
+      top: '12%',
+      left: '6%',
       anim: 'animate-float-slow',
-      size: 'w-24 h-24',
-      opacity: 'opacity-25',
+      size: 'w-28',
+      opacity: 'opacity-65 hover:opacity-100',
     },
     {
-      top: '18%',
-      right: '10%',
+      top: '14%',
+      right: '8%',
       anim: 'animate-float-medium',
-      size: 'w-28 h-28',
-      opacity: 'opacity-30',
+      size: 'w-32',
+      opacity: 'opacity-70 hover:opacity-100',
     },
     {
-      bottom: '15%',
-      left: '12%',
+      bottom: '16%',
+      left: '8%',
       anim: 'animate-float-fast',
-      size: 'w-20 h-20',
-      opacity: 'opacity-20',
+      size: 'w-28',
+      opacity: 'opacity-60 hover:opacity-100',
     },
     {
-      bottom: '12%',
-      right: '14%',
+      bottom: '14%',
+      right: '10%',
       anim: 'animate-float-slow',
-      size: 'w-24 h-24',
-      opacity: 'opacity-25',
+      size: 'w-32',
+      opacity: 'opacity-65 hover:opacity-100',
+    },
+    {
+      top: '46%',
+      left: '3%',
+      anim: 'animate-float-medium',
+      size: 'w-24',
+      opacity: 'opacity-55 hover:opacity-100',
     },
     {
       top: '48%',
-      left: '4%',
-      anim: 'animate-float-medium',
-      size: 'w-16 h-16',
-      opacity: 'opacity-20',
-    },
-    {
-      top: '52%',
-      right: '5%',
+      right: '3%',
       anim: 'animate-float-fast',
-      size: 'w-20 h-20',
-      opacity: 'opacity-25',
+      size: 'w-24',
+      opacity: 'opacity-55 hover:opacity-100',
     },
   ]
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50/50 p-4 py-12 relative overflow-hidden">
       {/* Logos dos módulos ativos flutuando no background da tela de login */}
-      {isLogin && activeModules.length > 0 && (
+      {isLogin && (
         <div className="absolute inset-0 pointer-events-none select-none z-0 overflow-hidden">
-          {activeModules.map((mod, index) => {
+          {(activeModules.length > 0
+            ? activeModules
+            : [
+                { id: 'f1', name: 'Elektra Flow', logo: '' },
+                { id: 'f2', name: 'Elektra CRM', logo: '' },
+                { id: 'f3', name: 'Elektra Insights', logo: '' },
+              ]
+          ).map((mod, index) => {
             const styleCfg = floatingStyles[index % floatingStyles.length]
-            const logoSrc = mod.logo ? pb.files.getURL(mod, mod.logo) : null
+            const logoSrc = mod.logo ? pb.files.getURL(mod as any, mod.logo) : null
 
             return (
               <div
@@ -359,16 +366,20 @@ export default function Auth() {
                   left: styleCfg.left,
                   right: (styleCfg as any).right,
                 }}
-                className={`absolute ${styleCfg.anim} ${styleCfg.opacity} transition-all hidden sm:flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50/80 border border-slate-200/60 shadow-sm backdrop-blur-[1px]`}
+                className={`absolute ${styleCfg.anim} ${styleCfg.opacity} transition-all duration-500 hidden sm:flex flex-col items-center justify-center p-3.5 rounded-2xl bg-white/90 border border-slate-200/80 shadow-md backdrop-blur-sm`}
               >
                 {logoSrc ? (
-                  <img src={logoSrc} alt={mod.name} className="max-h-12 max-w-16 object-contain" />
+                  <img
+                    src={logoSrc}
+                    alt={mod.name}
+                    className="max-h-12 max-w-20 object-contain drop-shadow-sm"
+                  />
                 ) : (
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                    {mod.name?.charAt(0) || 'M'}
+                  <div className="h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-base shadow-sm">
+                    {mod.name?.charAt(0) || 'E'}
                   </div>
                 )}
-                <span className="text-[10px] font-medium text-slate-600 mt-1 truncate max-w-[80px]">
+                <span className="text-[11px] font-semibold text-slate-700 mt-1.5 truncate max-w-[90px] text-center">
                   {mod.name}
                 </span>
               </div>

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-10T19:49:18.432Z",
+  "generatedAt": "2026-10-10T21:23:07.595Z",
   "collections": [
     {
       "name": "users",
@@ -230,8 +230,8 @@
       "name": "modules",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "",
+        "view": "",
         "create": "@request.auth.role = 'Admin'",
         "update": "@request.auth.role = 'Admin'",
         "delete": "@request.auth.role = 'Admin'"
@@ -303,6 +303,12 @@
         {
           "name": "features",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "price_per_user",
+          "type": "number",
           "required": false,
           "system": false
         }

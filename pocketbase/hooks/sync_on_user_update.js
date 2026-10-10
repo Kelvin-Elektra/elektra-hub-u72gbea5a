@@ -56,11 +56,54 @@ onRecordAfterUpdateSuccess((e) => {
     const secretName = mod.getString('secret_key_name')
     const secret = secretName ? $secrets.get(secretName) : ''
 
+    // Se o usuário foi ativado, buscar se ele possui vínculo com este módulo (ou se é dono)
+    let roleCompany = 'user'
+    if (user.getString('role') === 'User_owner') {
+      roleCompany = 'admin'
+    } else {
+      try {
+        const access = $app.findFirstRecordByFilter(
+          'employee_access',
+          'employee_id = {:userId} && module_id = {:moduleId}',
+          { userId: user.id, moduleId: mod.id },
+        )
+        if (access) {
+          roleCompany = access.getString('role_company') || 'user'
+        }
+      } catch (_) {}
+    }
+
+    const exportUser = (rec) => ({
+      id: rec.id,
+      created: rec.getString('created'),
+      updated: rec.getString('updated'),
+      email: rec.getString('email'),
+      name: rec.getString('name'),
+      avatar: rec.getString('avatar'),
+      role: rec.getString('role'),
+      person_type: rec.getString('person_type'),
+      tax_id: rec.getString('tax_id'),
+      company_name: rec.getString('company_name'),
+      postal_code: rec.getString('postal_code'),
+      address: rec.getString('address'),
+      address_number: rec.getString('address_number'),
+      complement: rec.getString('complement'),
+      neighborhood: rec.getString('neighborhood'),
+      city: rec.getString('city'),
+      state: rec.getString('state'),
+      active: newActive,
+      company_id: rec.getString('company_id') || companyId,
+      phone: rec.getString('phone'),
+    })
+
     // Contrato estrito: Revogar/Reativar USUÁRIO não pode enviar company.status
     const payload = {
       hub_user_id: user.id,
       hub_company_id: companyId,
-      user: { active: newActive },
+      role_company: roleCompany,
+      name: user.getString('name'),
+      email: user.getString('email'),
+      user: exportUser(user),
     }
 
     let status = 'success'

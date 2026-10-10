@@ -28,9 +28,10 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Layers,
   HelpCircle,
+  Users,
 } from 'lucide-react'
+import { formatCurrencyBRL } from '@/lib/formatters'
 
 const INTEGRATION_PROMPT_TEMPLATE = `Contexto: O [NOME_DO_MÓDULO] ([DESCRIÇÃO_DO_MÓDULO]) é um módulo do ecossistema Elektra. O Elektra HUB é a fonte da verdade de usuários, empresas e assinaturas. O módulo nunca cria contas próprias: recebe tudo do HUB via sync e autentica via SSO.
 
@@ -82,14 +83,6 @@ export default function ModulesAdmin() {
   const [isHelperOpen, setIsHelperOpen] = useState(false)
   const [copiedHelper, setCopiedHelper] = useState(false)
 
-  // Gestão de Faixas de Preço (module_pricing_tiers)
-  const [tiers, setTiers] = useState<any[]>([])
-  const [tiersModalModule, setTiersModalModule] = useState<any | null>(null)
-  const [newTierMaxUsers, setNewTierMaxUsers] = useState<number>(5)
-  const [newTierPrice, setNewTierPrice] = useState<number>(89)
-  const [editingTierId, setEditingTierId] = useState<string | null>(null)
-  const [savingTier, setSavingTier] = useState(false)
-
   const [isOpen, setIsOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [currentId, setCurrentId] = useState('')
@@ -98,6 +91,7 @@ export default function ModulesAdmin() {
   const [description, setDescription] = useState('')
   const [features, setFeatures] = useState('')
   const [basePrice, setBasePrice] = useState(0)
+  const [pricePerUser, setPricePerUser] = useState(0)
   const [status, setStatus] = useState('active')
   const [accessUrl, setAccessUrl] = useState('')
   const [endpointUrl, setEndpointUrl] = useState('')
@@ -109,15 +103,8 @@ export default function ModulesAdmin() {
   const loadModules = async () => {
     try {
       setLoading(true)
-      const [records, tierRecords] = await Promise.all([
-        pb.collection('modules').getFullList({ sort: 'name' }),
-        pb
-          .collection('module_pricing_tiers')
-          .getFullList({ sort: 'max_users' })
-          .catch(() => []),
-      ])
+      const records = await pb.collection('modules').getFullList({ sort: 'name' })
       setModules(records)
-      setTiers(tierRecords)
     } catch (error) {
       console.error(error)
     } finally {
@@ -136,59 +123,6 @@ export default function ModulesAdmin() {
     setTimeout(() => setCopiedHelper(false), 2500)
   }
 
-  const handleOpenTiers = (mod: any) => {
-    setTiersModalModule(mod)
-    setEditingTierId(null)
-    setNewTierMaxUsers(5)
-    setNewTierPrice(mod.base_price || 89)
-  }
-
-  const handleSaveTier = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!tiersModalModule) return
-    if (newTierMaxUsers < 1 || newTierPrice < 0) {
-      toast.error('Informe valores válidos para limite de usuários e preço.')
-      return
-    }
-
-    try {
-      setSavingTier(true)
-      if (editingTierId) {
-        await pb.collection('module_pricing_tiers').update(editingTierId, {
-          max_users: Number(newTierMaxUsers),
-          price: Number(newTierPrice),
-        })
-        toast.success('Faixa de preço atualizada!')
-      } else {
-        await pb.collection('module_pricing_tiers').create({
-          module_id: tiersModalModule.id,
-          max_users: Number(newTierMaxUsers),
-          price: Number(newTierPrice),
-        })
-        toast.success('Faixa de preço adicionada!')
-      }
-      setEditingTierId(null)
-      setNewTierMaxUsers(5)
-      setNewTierPrice(tiersModalModule.base_price || 89)
-      loadModules()
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar faixa')
-    } finally {
-      setSavingTier(false)
-    }
-  }
-
-  const handleDeleteTier = async (tierId: string) => {
-    if (!confirm('Deseja excluir esta faixa de preço?')) return
-    try {
-      await pb.collection('module_pricing_tiers').delete(tierId)
-      toast.success('Faixa excluída!')
-      loadModules()
-    } catch (err: any) {
-      toast.error('Erro ao excluir faixa')
-    }
-  }
-
   const handleOpenNew = () => {
     setIsEditing(false)
     setCurrentId('')
@@ -196,6 +130,7 @@ export default function ModulesAdmin() {
     setDescription('')
     setFeatures('')
     setBasePrice(0)
+    setPricePerUser(0)
     setStatus('active')
     setAccessUrl('')
     setEndpointUrl('')
@@ -211,6 +146,7 @@ export default function ModulesAdmin() {
     setDescription(mod.description || '')
     setFeatures(mod.features || '')
     setBasePrice(mod.base_price || 0)
+    setPricePerUser(mod.price_per_user || 0)
     setStatus(mod.status)
     setAccessUrl(mod.access_url || '')
     setEndpointUrl(mod.endpoint_url || '')
@@ -237,7 +173,8 @@ export default function ModulesAdmin() {
       formData.append('name', name)
       formData.append('description', description)
       formData.append('features', features)
-      formData.append('base_price', basePrice.toString())
+      formData.append('base_price', (basePrice || 0).toString())
+      formData.append('price_per_user', (pricePerUser || 0).toString())
       formData.append('status', status)
       formData.append('access_url', accessUrl)
       formData.append('endpoint_url', endpointUrl)
@@ -267,7 +204,7 @@ export default function ModulesAdmin() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Módulos</h1>
           <p className="text-muted-foreground">
-            Gerencie os módulos do ecossistema e faixas de preço.
+            Gerencie os módulos do ecossistema, preços base e valor adicional por colaborador.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -347,13 +284,9 @@ export default function ModulesAdmin() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleOpenTiers(mod)}
-                      title="Gerenciar faixas de preço por quantidade de usuários"
-                      className="text-primary hover:bg-primary/10"
+                      onClick={() => handleOpenEdit(mod)}
+                      title="Editar módulo e preços"
                     >
-                      <Layers className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(mod)}>
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(mod.id)}>
@@ -362,8 +295,13 @@ export default function ModulesAdmin() {
                   </div>
                 </div>
                 <CardTitle className="mt-2">{mod.name}</CardTitle>
-                <CardDescription>
-                  Preço Base: R$ {(mod.base_price || 0).toFixed(2)} / mês
+                <CardDescription className="flex flex-col gap-0.5">
+                  <span className="font-medium text-foreground">
+                    Base (até 1 usuário): {formatCurrencyBRL(mod.base_price)} / mês
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    + {formatCurrencyBRL(mod.price_per_user)} por usuário adicional
+                  </span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1 space-y-3">
@@ -371,40 +309,26 @@ export default function ModulesAdmin() {
                   {mod.description || 'Sem descrição'}
                 </p>
 
-                {/* Faixas de preço cadastradas para este módulo */}
-                <div className="border-t pt-2">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-semibold text-foreground flex items-center gap-1">
-                      <Layers className="h-3.5 w-3.5 text-primary" /> Faixas de Preço:
+                {/* Estrutura de Preço Limpa */}
+                <div className="border-t pt-2.5 bg-slate-50/70 p-2.5 rounded-lg space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center text-slate-700">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Users className="h-3.5 w-3.5 text-primary" /> Usuário base (incluso):
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTiers(mod)}
-                      className="text-primary hover:underline text-xs"
-                    >
-                      Configurar
-                    </button>
+                    <span className="font-semibold text-foreground">
+                      {formatCurrencyBRL(mod.base_price)}
+                    </span>
                   </div>
-                  {tiers.filter((t) => t.module_id === mod.id).length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">
-                      Nenhuma faixa (usa preço base).
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {tiers
-                        .filter((t) => t.module_id === mod.id)
-                        .sort((a, b) => a.max_users - b.max_users)
-                        .map((tier) => (
-                          <span
-                            key={tier.id}
-                            className="inline-flex items-center text-[11px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium"
-                          >
-                            Até {tier.max_users} usuários: R${' '}
-                            {Number(tier.price).toFixed(2).replace('.', ',')}
-                          </span>
-                        ))}
-                    </div>
-                  )}
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>A cada usuário a mais:</span>
+                    <span className="font-semibold text-primary">
+                      + {formatCurrencyBRL(mod.price_per_user)} / mês
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground pt-1 border-t border-slate-200">
+                    Exemplo: 5 usuários ={' '}
+                    {formatCurrencyBRL((mod.base_price || 0) + 4 * (mod.price_per_user || 0))} / mês
+                  </div>
                 </div>
 
                 <div className="mt-2 flex items-center gap-2 text-sm">
@@ -440,18 +364,59 @@ export default function ModulesAdmin() {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nome</Label>
+                  <Label>Nome do Módulo</Label>
                   <Input value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Preço Base (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={basePrice}
-                    onChange={(e) => setBasePrice(parseFloat(e.target.value))}
-                    required
-                  />
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="maintenance">Manutenção</SelectItem>
+                      <SelectItem value="deprecated">Descontinuado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="p-3 bg-muted/40 rounded-lg border space-y-3">
+                <p className="text-xs font-semibold text-foreground">
+                  Modelo de Preço por Usuário (Base + Adicional por Usuário Extra)
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Preço Base (até 1 usuário) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={basePrice}
+                      onChange={(e) => setBasePrice(parseFloat(e.target.value) || 0)}
+                      placeholder="Ex: 89.00"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Valor mensal com 1 usuário incluso
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Preço por Usuário Adicional *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={pricePerUser}
+                      onChange={(e) => setPricePerUser(parseFloat(e.target.value) || 0)}
+                      placeholder="Ex: 19.90"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Valor a mais por cada colaborador extra
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -474,29 +439,14 @@ export default function ModulesAdmin() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Ativo</SelectItem>
-                      <SelectItem value="maintenance">Manutenção</SelectItem>
-                      <SelectItem value="deprecated">Descontinuado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Logo</Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Logo do Módulo</Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                />
               </div>
 
               <div className="space-y-2">
@@ -536,136 +486,6 @@ export default function ModulesAdmin() {
               <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de Faixas de Preço por Usuários */}
-      <Dialog open={!!tiersModalModule} onOpenChange={(open) => !open && setTiersModalModule(null)}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
-              Faixas de Preço por Usuários: {tiersModalModule?.name}
-            </DialogTitle>
-            <CardDescription>
-              Configure faixas de valores de acordo com a quantidade de usuários contratada. Ex.:
-              até 5 usuários = R$ 89,00; até 10 usuários = R$ 159,00.
-            </CardDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {/* Formulário de adicionar/editar faixa */}
-            <form onSubmit={handleSaveTier} className="p-3 bg-muted/40 rounded-lg border space-y-3">
-              <p className="text-xs font-semibold text-foreground">
-                {editingTierId ? 'Editar Faixa de Preço' : 'Adicionar Nova Faixa'}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Limite de Usuários (Até X)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={newTierMaxUsers}
-                    onChange={(e) => setNewTierMaxUsers(parseInt(e.target.value) || 1)}
-                    placeholder="Ex: 5"
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Preço Mensal (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    value={newTierPrice}
-                    onChange={(e) => setNewTierPrice(parseFloat(e.target.value) || 0)}
-                    placeholder="Ex: 89.00"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                {editingTierId && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEditingTierId(null)
-                      setNewTierMaxUsers(5)
-                      setNewTierPrice(tiersModalModule.base_price || 89)
-                    }}
-                  >
-                    Cancelar Edição
-                  </Button>
-                )}
-                <Button type="submit" size="sm" disabled={savingTier}>
-                  {savingTier
-                    ? 'Salvando...'
-                    : editingTierId
-                      ? 'Atualizar Faixa'
-                      : 'Adicionar Faixa'}
-                </Button>
-              </div>
-            </form>
-
-            {/* Lista das faixas cadastradas para este módulo */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Faixas Existentes (Ordenadas)</Label>
-              <div className="border rounded-md divide-y max-h-60 overflow-y-auto">
-                {tiers.filter((t) => t.module_id === tiersModalModule?.id).length === 0 ? (
-                  <p className="p-4 text-center text-xs text-muted-foreground">
-                    Nenhuma faixa cadastrada. O módulo cobrará o Preço Base fixo (R${' '}
-                    {(tiersModalModule?.base_price || 0).toFixed(2)}).
-                  </p>
-                ) : (
-                  tiers
-                    .filter((t) => t.module_id === tiersModalModule?.id)
-                    .sort((a, b) => a.max_users - b.max_users)
-                    .map((tier) => (
-                      <div
-                        key={tier.id}
-                        className="p-3 flex items-center justify-between hover:bg-muted/30"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold">Até {tier.max_users} usuários</p>
-                          <p className="text-xs text-muted-foreground">
-                            Valor mensal: R$ {Number(tier.price).toFixed(2).replace('.', ',')}
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingTierId(tier.id)
-                              setNewTierMaxUsers(tier.max_users)
-                              setNewTierPrice(tier.price)
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteTier(tier.id)}
-                            className="text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button onClick={() => setTiersModalModule(null)}>Fechar</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

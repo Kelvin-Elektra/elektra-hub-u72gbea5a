@@ -31,6 +31,7 @@ import { toast } from 'sonner'
 import { ArrowLeft, Plus, Edit2, ShieldAlert, Ban, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { formatCurrencyBRL } from '@/lib/formatters'
 
 export default function SubscriptionDetail() {
   const { id } = useParams<{ id: string }>()
@@ -44,7 +45,6 @@ export default function SubscriptionDetail() {
   const [editingSub, setEditingSub] = useState<any>(null)
   const [editStatus, setEditStatus] = useState('')
   const [editMaxUsers, setEditMaxUsers] = useState(1)
-  const [pricingTiers, setPricingTiers] = useState<any[]>([])
   const [companyEmployees, setCompanyEmployees] = useState<any[]>([])
   const [companyAccess, setCompanyAccess] = useState<any[]>([])
   const [managingAccessMod, setManagingAccessMod] = useState<any>(null)
@@ -65,12 +65,11 @@ export default function SubscriptionDetail() {
       const u = await pb.collection('users').getOne(id)
       setUser(u)
 
-      const [subs, mods, tiers] = await Promise.all([
+      const [subs, mods] = await Promise.all([
         pb
           .collection('subscriptions')
           .getFullList({ filter: `user_id="${id}"`, expand: 'module_id' }),
         pb.collection('modules').getFullList(),
-        pb.collection('module_pricing_tiers').getFullList({ sort: 'max_users' }),
       ])
 
       let emps: any[] = []
@@ -88,7 +87,6 @@ export default function SubscriptionDetail() {
 
       setSubscriptions(subs)
       setModules(mods)
-      setPricingTiers(tiers)
       setCompanyEmployees(emps)
       setCompanyAccess(accs)
     } catch (err) {
@@ -106,19 +104,18 @@ export default function SubscriptionDetail() {
   const handleUpdateSub = async () => {
     try {
       setSaving(true)
-      const modTiers = pricingTiers
-        .filter((t) => t.module_id === editingSub.module_id)
-        .sort((a, b) => a.max_users - b.max_users)
-      const matchedTier =
-        modTiers.find((t) => t.max_users >= editMaxUsers) || modTiers[modTiers.length - 1]
-      const newPrice = matchedTier ? matchedTier.price : editingSub.price || 0
+      const mod = modules.find((m) => m.id === editingSub.module_id) || editingSub.expand?.module_id
+      const base = Number(mod?.base_price) || 0
+      const ppu = Number(mod?.price_per_user) || 0
+      const usersCount = Math.max(1, editMaxUsers)
+      const calculatedPrice = base + (usersCount - 1) * ppu
 
       await pb.collection('subscriptions').update(editingSub.id, {
         status: editStatus,
         max_users: editMaxUsers,
-        price: newPrice,
+        price: calculatedPrice,
       })
-      toast.success('Assinatura atualizada!')
+      toast.success('Assinatura atualizada com sucesso!')
       setEditingSub(null)
       loadData()
     } catch (err) {
@@ -153,21 +150,17 @@ export default function SubscriptionDetail() {
       setSaving(true)
 
       const mod = modules.find((m) => m.id === newModuleId)
-
-      // Calcula preço baseado na faixa de preço se houver
-      const modTiers = pricingTiers
-        .filter((t) => t.module_id === newModuleId)
-        .sort((a, b) => a.max_users - b.max_users)
-      const matchedTier =
-        modTiers.find((t) => t.max_users >= newMaxUsers) || modTiers[modTiers.length - 1]
-      const tierPrice = matchedTier ? matchedTier.price : mod?.base_price || 0
+      const base = Number(mod?.base_price) || 0
+      const ppu = Number(mod?.price_per_user) || 0
+      const usersCount = Math.max(1, newMaxUsers)
+      const calculatedPrice = base + (usersCount - 1) * ppu
 
       await pb.collection('subscriptions').create({
         user_id: user.id,
         module_id: newModuleId,
         status: 'active',
         max_users: newMaxUsers,
-        price: tierPrice,
+        price: calculatedPrice,
       })
       toast.success('Acesso concedido com sucesso!')
       setIsNewOpen(false)
@@ -274,9 +267,15 @@ export default function SubscriptionDetail() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span>R$ {sub.price?.toFixed(2).replace('.', ',') || '0,00'}</span>
-                        {pricingTiers.some((t) => t.module_id === sub.module_id) && (
-                          <span className="text-[10px] text-primary">Faixa dinâmica</span>
+                        <span className="font-semibold text-foreground">
+                          {formatCurrencyBRL(sub.price)}
+                        </span>
+                        {sub.expand?.module_id && (
+                          <span className="text-[11px] text-muted-foreground">
+                            Base {formatCurrencyBRL(sub.expand.module_id.base_price)} +{' '}
+                            {(sub.max_users || 1) - 1}x{' '}
+                            {formatCurrencyBRL(sub.expand.module_id.price_per_user)}
+                          </span>
                         )}
                       </div>
                     </TableCell>
