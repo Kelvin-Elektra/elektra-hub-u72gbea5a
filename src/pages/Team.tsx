@@ -160,17 +160,22 @@ export default function Team() {
   }
 
   const handleRemoveEmployee = async (id: string) => {
-    if (!confirm('Deseja realmente remover este colaborador? O acesso dele será revogado.')) return
+    if (
+      !confirm(
+        'Deseja realmente excluir este colaborador? Ele será removido permanentemente e todos os seus acessos serão revogados.',
+      )
+    )
+      return
     try {
-      await pb.collection('users').update(id, { active: false })
-      toast.success('Colaborador removido com sucesso.')
+      await pb.collection('users').delete(id)
+      toast.success('Colaborador excluído com sucesso.')
       loadData()
     } catch (err: any) {
       const status = err?.status || err?.response?.status
       if (status === 404) {
-        toast.error('Colaborador não encontrado ou você não tem permissão para inativá-lo.')
+        toast.error('Colaborador não encontrado ou você não tem permissão para excluí-lo.')
       } else {
-        toast.error(err?.message || 'Erro ao remover colaborador.')
+        toast.error(err?.message || 'Erro ao excluir colaborador.')
       }
     }
   }
@@ -267,7 +272,7 @@ export default function Team() {
                     <TableCell className="font-medium">{emp.name}</TableCell>
                     <TableCell>
                       <span className="font-medium text-foreground">
-                        {emp.email || emp.username || 'Sem e-mail'}
+                        {emp.email || 'Sem e-mail'}
                       </span>
                     </TableCell>
                     <TableCell>

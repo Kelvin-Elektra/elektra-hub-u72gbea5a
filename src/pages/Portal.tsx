@@ -449,11 +449,8 @@ export default function Portal() {
                 </div>
                 <CardTitle className="mt-4">{mod.name}</CardTitle>
                 <CardDescription>
-                  {sub && sub.price ? (
-                    <span className="font-semibold text-foreground">
-                      {formatCurrencyBRL(sub.price)} / mês ({sub.max_users || 1} usuário
-                      {sub.max_users && sub.max_users > 1 ? 's' : ''})
-                    </span>
+                  {canAccess ? (
+                    <span className="font-semibold text-emerald-600">Módulo Assinado</span>
                   ) : (
                     <span>A partir de {formatCurrencyBRL(mod.base_price)} / mês</span>
                   )}
@@ -477,25 +474,40 @@ export default function Portal() {
                   </p>
                 )}
 
-                {/* Exibição clara do novo modelo de preço: base + por usuário */}
-                <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-1.5 text-xs">
-                  <div className="flex justify-between items-center text-slate-700">
-                    <span className="font-medium flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5 text-primary" /> Valor base (1 usuário):
-                    </span>
-                    <span className="font-semibold text-foreground">
-                      {formatCurrencyBRL(mod.base_price)}
-                    </span>
-                  </div>
-                  {Number((mod as any).price_per_user) > 0 && (
-                    <div className="flex justify-between items-center text-slate-600">
-                      <span>Por usuário adicional:</span>
-                      <span className="font-semibold text-primary">
-                        + {formatCurrencyBRL((mod as any).price_per_user)} / mês
+                {/* Exibição do modelo de preço: apenas para quem ainda NÃO é assinante ativo */}
+                {!canAccess && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-slate-700">
+                      <span className="font-medium flex items-center gap-1">
+                        <Users className="h-3.5 w-3.5 text-primary" /> Valor base (1 usuário):
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {formatCurrencyBRL(mod.base_price)}
                       </span>
                     </div>
-                  )}
-                </div>
+                    {Number((mod as any).price_per_user) > 0 && (
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>Por usuário adicional:</span>
+                        <span className="font-semibold text-primary">
+                          + {formatCurrencyBRL((mod as any).price_per_user)} / mês
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {canAccess && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-md p-2.5 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-emerald-800">
+                      <span className="font-medium flex items-center gap-1">
+                        <Users className="h-3.5 w-3.5 text-emerald-600" /> Status da Assinatura:
+                      </span>
+                      <span className="font-semibold text-emerald-700">
+                        {isActive ? 'Ativo' : 'Teste / Processando'}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {canAccess && (
                   <p className="text-xs text-muted-foreground font-medium bg-secondary/50 inline-block px-2 py-1 rounded">

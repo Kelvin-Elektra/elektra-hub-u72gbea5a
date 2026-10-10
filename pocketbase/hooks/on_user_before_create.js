@@ -5,17 +5,19 @@ onRecordCreateRequest((e) => {
   // Verificação de unicidade global de e-mail em toda a base
   if (email) {
     try {
-      const existing = $app.findAuthRecordByEmail('users', email)
+      const cleanEmail = email.trim().toLowerCase()
+      const existing = $app.findAuthRecordByEmail('users', cleanEmail)
       if (existing && existing.id !== record.id) {
         return e.badRequestError('Este e-mail já está cadastrado no HUB.')
       }
     } catch (_) {}
   }
 
-  // Colaboradores criados por admin ou fluxo direto ficam ativos sem confirmação
+  // Colaboradores criados por admin ou fluxo direto ficam ativos sem confirmação e com email visível para a empresa
   const role = record.getString('role')
   if (role === 'User_employee' || role === 'User_owner') {
     record.set('active', true)
+    record.set('emailVisibility', true)
   }
 
   e.next()

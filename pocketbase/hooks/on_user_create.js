@@ -40,23 +40,9 @@ onRecordAfterCreateSuccess((e) => {
     </div>
   `
 
-  // Se for colaborador (User_employee), dispara e-mail de boas-vindas com link de acesso do HUB
+  // Se for colaborador (User_employee), o envio de credenciais com senha é gerenciado exclusivamente pelo endpoint de convite (/backend/v1/invite-employee) para evitar envio duplicado.
   if (isEmployee) {
-    subject = 'Bem-vindo ao Elektra HUB - Acesso à Plataforma'
-    htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
-        <h2 style="color: #1d4ed8; margin-bottom: 8px;">Bem-vindo ao Elektra HUB!</h2>
-        <p>Olá <strong>${userName}</strong>,</p>
-        <p>Sua conta de colaborador foi criada no Elektra HUB.</p>
-        <div style="background-color: #f1f5f9; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1d4ed8;">
-          <p style="margin: 0 0 8px 0;"><strong>Seus dados de acesso:</strong></p>
-          <p style="margin: 4px 0;"><strong>E-mail:</strong> ${email}</p>
-          <p style="margin: 4px 0;"><strong>Link de Acesso:</strong> <a href="${frontendUrl}" style="color: #1d4ed8;">${frontendUrl}</a></p>
-        </div>
-        <p>Acesse o link acima para entrar na plataforma e começar suas atividades.</p>
-        <p style="margin-top: 24px; font-size: 13px; color: #64748b;">Atenciosamente,<br />Equipe Elektra Soluções</p>
-      </div>
-    `
+    return e.next()
   }
 
   try {
@@ -85,16 +71,6 @@ onRecordAfterCreateSuccess((e) => {
     $app.logger().error('Error sending welcome/verification email', 'error', String(err))
   }
 
-  // Backup Skip Cloud mailer
-  try {
-    const mailClient = $app.newMailClient()
-    mailClient.send({
-      from: { address: 'notificacao@elektrasolucoes.tech', name: 'Elektra HUB' },
-      to: [{ address: email, name: userName }],
-      subject: subject,
-      html: htmlContent,
-    })
-  } catch (_) {}
-
+  // Nota: O fallback newMailClient do Skip Cloud usa domínio interno goskip.dev e foi removido para evitar disparos duplicados não institucionais.
   return e.next()
 }, 'users')

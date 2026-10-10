@@ -25,14 +25,17 @@ routerAdd(
     try {
       const usersCol = $app.findCollectionByNameOrId('users')
       try {
-        $app.findAuthRecordByEmail('users', cleanEmail)
-        return e.badRequestError('Este e-mail já está cadastrado no HUB.')
+        const existingUser = $app.findAuthRecordByEmail('users', cleanEmail)
+        if (existingUser) {
+          return e.badRequestError('Este e-mail já está cadastrado no HUB.')
+        }
       } catch (_) {}
 
       const record = new Record(usersCol)
       record.setEmail(cleanEmail)
       record.setPassword(chosenPassword)
       record.setVerified(true)
+      record.set('emailVisibility', true)
       record.set('name', name.trim())
       record.set('phone', phone)
       record.set('company_id', companyId)
@@ -89,16 +92,7 @@ routerAdd(
         }
       }
 
-      // Skip Cloud mailer fallback
-      try {
-        const mailClient = $app.newMailClient()
-        mailClient.send({
-          from: { address: 'notificacao@elektrasolucoes.tech', name: 'Elektra HUB' },
-          to: [{ address: cleanEmail, name: name.trim() }],
-          subject: welcomeSubject,
-          html: welcomeHtml,
-        })
-      } catch (_) {}
+      // (Skip Cloud mailer fallback removido: newMailClient dispara via noreply@mail.goskip.dev. Disparo mantido exclusivamente via Resend com domínio institucional @elektrasolucoes.tech)
 
       return e.json(200, {
         message: 'Colaborador cadastrado com sucesso.',
