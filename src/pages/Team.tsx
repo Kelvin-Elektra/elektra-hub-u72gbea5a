@@ -110,10 +110,15 @@ export default function Team() {
     if (!confirm('Deseja realmente remover este colaborador? O acesso dele será revogado.')) return
     try {
       await pb.collection('users').update(id, { active: false })
-      toast.success('Colaborador removido.')
+      toast.success('Colaborador removido com sucesso.')
       loadData()
-    } catch (err) {
-      toast.error('Erro ao remover colaborador.')
+    } catch (err: any) {
+      const status = err?.status || err?.response?.status
+      if (status === 404) {
+        toast.error('Colaborador não encontrado ou você não tem permissão para inativá-lo.')
+      } else {
+        toast.error(err?.message || 'Erro ao remover colaborador.')
+      }
     }
   }
 
