@@ -43,6 +43,7 @@ onRecordDeleteRequest((e) => {
 onRecordAfterDeleteSuccess((e) => {
   const user = e.record
   const userId = user.id
+  const userEmail = user.getString('email') || ''
   const companyId = user.getString('company_id') || ''
 
   // Buscar todos os registros de employee_access deste colaborador antes ou associados a ele
@@ -100,7 +101,9 @@ onRecordAfterDeleteSuccess((e) => {
       const revokePayload = {
         hub_user_id: userId,
         hub_company_id: companyId,
-        user: { active: false },
+        email: userEmail,
+        deleted: true,
+        user: { active: false, email: userEmail },
       }
 
       let status = 'success'

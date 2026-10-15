@@ -77,6 +77,7 @@ onRecordAfterUpdateSuccess((e) => {
     const payload = {
       hub_user_id: ownerUser.id,
       hub_company_id: companyId,
+      email: ownerUser.getString('email') || '',
       company: { status: newCompanyStatus },
     }
 

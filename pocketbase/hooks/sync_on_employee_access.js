@@ -120,6 +120,8 @@ onRecordAfterCreateSuccess((e) => {
     hub_user_id: employee.id,
     hub_company_id: effectiveCompId || '',
     role_company: roleCompany,
+    name: employee.getString('name'),
+    email: employee.getString('email'),
     user: exportUser(employee),
     company: exportCompany(company),
     subscription: sub
@@ -190,7 +192,8 @@ onRecordAfterCreateSuccess((e) => {
     const strictPayload = {
       hub_user_id: employee.id,
       hub_company_id: effectiveCompId || '',
-      user: { active: true },
+      email: employee.getString('email'),
+      user: { active: true, email: employee.getString('email') },
     }
     $http.send({
       url: endpoint,
@@ -242,11 +245,21 @@ onRecordAfterDeleteSuccess((e) => {
   const secretName = mod.getString('secret_key_name')
   const secret = secretName ? $secrets.get(secretName) : ''
 
+  // Buscar e-mail do colaborador antes de disparar a revogação
+  let employeeEmail = ''
+  try {
+    const empRec = $app.findRecordById('users', employeeId)
+    if (empRec) {
+      employeeEmail = empRec.getString('email') || ''
+    }
+  } catch (_) {}
+
   // Revogação de usuário no módulo (contrato estrito: user:{active:false} SEM company.status)
   const revokePayload = {
     hub_user_id: employeeId,
     hub_company_id: companyId || '',
-    user: { active: false },
+    email: employeeEmail,
+    user: { active: false, email: employeeEmail },
   }
 
   let status = 'success'

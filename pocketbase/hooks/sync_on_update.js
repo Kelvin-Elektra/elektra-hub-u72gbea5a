@@ -127,6 +127,8 @@ onRecordAfterUpdateSuccess((e) => {
     hub_user_id: user.id,
     hub_company_id: companyId || '',
     role_company: roleCompany,
+    name: user.getString('name'),
+    email: user.getString('email'),
     user: exportUser(user),
     company: exportCompany(company),
     subscription: {
@@ -209,9 +211,18 @@ onRecordAfterUpdateSuccess((e) => {
     }
 
     const targetCompanyStatus = isNowActive ? 'active' : 'inactive'
+    let ownerEmail = user.getString('email') || ''
+    if (ownerUserId !== user.id) {
+      try {
+        const ownerRec = $app.findRecordById('users', ownerUserId)
+        if (ownerRec) ownerEmail = ownerRec.getString('email') || ''
+      } catch (_) {}
+    }
+
     const revocationPayload = {
       hub_user_id: ownerUserId,
       hub_company_id: companyId,
+      email: ownerEmail,
       company: { status: targetCompanyStatus },
     }
 

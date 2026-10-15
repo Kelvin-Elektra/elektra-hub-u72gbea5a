@@ -50,16 +50,20 @@ FASE 2 — Endpoint de sincronização
 - O HUB envia três formatos de payload. O módulo deve tratar cada um:
 
 (a) Sync completo — criar/atualizar dados:
-{ "action": "sync", "hub_user_id": "<id do usuário no HUB>", "hub_company_id": "<id da empresa no HUB>", "role_company": "admin", "user": { "id": "...", "email": "...", "name": "...", "role": "User_owner", "active": true, "company_id": "...", "phone": "...", "person_type": "PJ", "tax_id": "...", "company_name": "...", "postal_code": "...", "address": "...", "address_number": "...", "complement": "...", "neighborhood": "...", "city": "...", "state": "SP", "created": "...", "updated": "..." }, "company": { "id": "...", "hub_company_id": "...", "nome": "...", "name": "...", "tax_id": "...", "status": "active", "address": "...", "address_number": "...", "complement": "...", "neighborhood": "...", "city": "...", "state": "...", "postal_code": "...", "created": "...", "updated": "..." }, "subscription": { "id": "...", "status": "active", "max_users": 5, "module_id": "...", "user_id": "...", "price": 199.90, "next_billing_date": "..." } }
+{ "action": "sync", "hub_user_id": "<id do usuário no HUB>", "hub_company_id": "<id da empresa no HUB>", "role_company": "admin", "name": "Nome", "email": "usuario@exemplo.com", "user": { "id": "...", "email": "usuario@exemplo.com", "name": "...", "role": "User_owner", "active": true, "company_id": "...", "phone": "...", "person_type": "PJ", "tax_id": "...", "company_name": "...", "postal_code": "...", "address": "...", "address_number": "...", "complement": "...", "neighborhood": "...", "city": "...", "state": "SP", "created": "...", "updated": "..." }, "company": { "id": "...", "hub_company_id": "...", "nome": "...", "name": "...", "tax_id": "...", "status": "active", "address": "...", "address_number": "...", "complement": "...", "neighborhood": "...", "city": "...", "state": "...", "postal_code": "...", "created": "...", "updated": "..." }, "subscription": { "id": "...", "status": "active", "max_users": 5, "module_id": "...", "user_id": "...", "price": 199.90, "next_billing_date": "..." } }
 
 (b) Revogar EMPRESA (bloqueia todos os usuários dela; atenção: NÃO vem user.active):
-{ "hub_user_id": "<id do usuário dono no HUB>", "hub_company_id": "<id da empresa no HUB>", "company": { "status": "inactive" } }
+{ "hub_user_id": "<id do usuário dono no HUB>", "hub_company_id": "<id da empresa no HUB>", "email": "dono@exemplo.com", "company": { "status": "inactive" } }
 
 (c) Revogar USUÁRIO (bloqueia só ele; NÃO vem company.status):
-{ "hub_user_id": "<id do usuário no HUB>", "hub_company_id": "<id da empresa no HUB>", "user": { "active": false } }
+{ "hub_user_id": "<id do usuário no HUB>", "hub_company_id": "<id da empresa no HUB>", "email": "usuario@exemplo.com", "user": { "active": false, "email": "usuario@exemplo.com" } }
+Nota: quando o usuário for excluído definitivamente no HUB (não apenas inativado), o payload vem com deleted: true na raiz:
+{ "hub_user_id": "<id do usuário no HUB>", "hub_company_id": "<id da empresa no HUB>", "email": "usuario@exemplo.com", "deleted": true, "user": { "active": false, "email": "usuario@exemplo.com" } }
 
 (d) Reativação = mesmas chamadas de (b) e (c) com "status": "active" / "active": true.
 - Regra de interpretação: só aplique mudança de status quando o campo vier explicitamente no payload. company.status presente → muda status da empresa (todos os usuários dela). user.active presente → muda o status só desse usuário. Ausência do campo = não mexer no que não foi mandado.
+- Resolução de usuário: localize o usuário local SEMPRE por hub_user_id. Se não encontrar nenhum registro com esse hub_user_id, use o email (presente na raiz do payload e dentro de user) como chave alternativa de resolução — o e-mail é único em todo o ecossistema. Ao encontrar por e-mail um registro cujo hub_user_id difere ou está vazio, atualize o hub_user_id dele para o valor recebido (auto-correção do mapeamento). Se não encontrar por nenhuma das duas chaves num payload de revogação/exclusão, responda 2xx e ignore (nada a revogar); num payload de sync/ativação, crie o registro.
+- Na revogação por exclusão de usuário: quando o usuário for excluído definitivamente no HUB (não apenas inativado), o payload vem com user.active: false e deleted: true na raiz — nesse caso, apague o registro local do usuário (não apenas inative).
 - hub_user_id e hub_company_id vêm em TODA chamada, mesmo em revogação parcial — use-os para localizar os registros.
 - Aplicar a revogação: usuário inativado ou empresa inactive → bloquear acesso imediatamente (inclusive sessões ativas).
 - Responder 2xx em sucesso (o HUB registra o resultado em sync_logs).
