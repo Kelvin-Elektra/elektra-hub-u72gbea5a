@@ -46,39 +46,57 @@ onRecordAfterDeleteSuccess((e) => {
   const userEmail = user.getString('email') || ''
   const companyId = user.getString('company_id') || ''
 
-  // Buscar todos os registros de employee_access deste colaborador antes ou associados a ele
-  let accesses = []
+  // Limpar quaisquer registros de employee_access remanescentes deste colaborador
   try {
-    accesses = $app.findRecordsByFilter('employee_access', 'employee_id = {:userId}', '', 100, 0, {
-      userId: userId,
-    })
+    const accesses = $app.findRecordsByFilter(
+      'employee_access',
+      'employee_id = {:userId}',
+      '',
+      100,
+      0,
+      { userId: userId },
+    )
+    for (let i = 0; i < accesses.length; i++) {
+      try {
+        $app.delete(accesses[i])
+      } catch (delErr) {
+        $app
+          .logger()
+          .error(
+            'on_user_delete: erro ao deletar employee_access remanescente',
+            'error',
+            String(delErr),
+          )
+      }
+    }
   } catch (err) {
-    $app.logger().error('on_user_delete: erro ao buscar employee_access', 'error', String(err))
+    $app
+      .logger()
+      .error('on_user_delete: erro ao buscar employee_access para limpeza', 'error', String(err))
   }
 
-  // Armazenar os module_ids associados para garantir revogação
-  const moduleIds = []
-  for (let i = 0; i < accesses.length; i++) {
-    const mId = accesses[i].getString('module_id')
-    if (mId && moduleIds.indexOf(mId) === -1) {
-      moduleIds.push(mId)
-    }
-    // Deletar o registro de employee_access (isso também disparará o hook sync_on_employee_access delete se houver)
-    try {
-      $app.delete(accesses[i])
-    } catch (delErr) {
-      $app
-        .logger()
-        .error('on_user_delete: erro ao deletar employee_access record', 'error', String(delErr))
-    }
+  // Buscar todos os módulos ativos com endpoint_url preenchido
+  // Enviar o payload de exclusão definitiva para todos os módulos ativos garante que mesmo se
+  // o front já removeu employee_access antes da exclusão do usuário, os módulos recebam { deleted: true }.
+  let activeModules = []
+  try {
+    activeModules = $app.findRecordsByFilter(
+      'modules',
+      'status = "active" && endpoint_url != ""',
+      '',
+      100,
+      0,
+    )
+  } catch (err) {
+    $app.logger().error('on_user_delete: erro ao listar módulos ativos', 'error', String(err))
+    return e.next()
   }
 
-  // Para cada módulo onde o usuário tinha acesso, garantir envio de revogação no contrato estrito:
-  // { hub_user_id, hub_company_id, user: { active: false } } SEM company.status
-  for (let j = 0; j < moduleIds.length; j++) {
-    const moduleId = moduleIds[j]
+  // Para cada módulo ativo, enviar o payload de exclusão definitiva mantendo o contrato estrito:
+  // { hub_user_id, hub_company_id, email, deleted: true, user: { active: false, email } }
+  for (let j = 0; j < activeModules.length; j++) {
+    const mod = activeModules[j]
     try {
-      const mod = $app.findRecordById('modules', moduleId)
       let endpoint = mod.getString('endpoint_url')
       if (!endpoint) continue
 
