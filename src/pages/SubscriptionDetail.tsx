@@ -512,18 +512,44 @@ export default function SubscriptionDetail() {
                 return (
                   <div
                     key={emp.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/40 transition-colors"
+                    className="flex flex-col gap-2.5 p-3 border rounded-lg hover:bg-muted/40 transition-colors"
                   >
-                    <div>
-                      <p className="text-sm font-medium">{emp.name}</p>
-                      <p className="text-xs text-muted-foreground">{emp.email}</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{emp.name}</p>
+                        <p className="text-xs text-muted-foreground">{emp.email}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">
+                          {isAssigned ? 'Com acesso' : 'Sem acesso'}
+                        </span>
+                        <Switch checked={isAssigned} onCheckedChange={handleToggle} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground">
-                        {isAssigned ? 'Com acesso' : 'Sem acesso'}
-                      </span>
-                      <Switch checked={isAssigned} onCheckedChange={handleToggle} />
-                    </div>
+                    {isAssigned && access && (
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <Label className="text-xs text-muted-foreground">Tipo de Acesso</Label>
+                        <select
+                          className="flex h-8 w-[130px] rounded-md border border-input bg-transparent px-2.5 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          value={access.role_company || 'user'}
+                          onChange={async (e) => {
+                            const newRole = e.target.value
+                            try {
+                              await pb
+                                .collection('employee_access')
+                                .update(access.id, { role_company: newRole })
+                              toast.success('Tipo de acesso atualizado.')
+                              loadData()
+                            } catch (err: any) {
+                              toast.error(err?.message || 'Erro ao atualizar permissão.')
+                            }
+                          }}
+                        >
+                          <option value="user">Usuário</option>
+                          <option value="admin">Administrador</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                 )
               })
